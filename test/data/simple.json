@@ -1,3 +1,16 @@
 {
-  "name": "hello"
+  "name": "jeremy",
+  "mysection": [
+    {
+      "class" : "first",
+      "nested": {
+        "name": "arthur"
+      }
+    },
+    {
+      "class" : "second",
+      "name" : "tomas"
+    }
+  ],
+  "inverted2": false
 }
