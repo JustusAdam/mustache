@@ -1,15 +1,13 @@
 module Text.Mustache.AST where
 
 
-import Data.Text
+type MustacheAST = [MustacheNode String]
 
 
-type MustacheAST = [MustacheNode]
-
-
-data MustacheNode
-  = MustacheText String
+data MustacheNode a
+  = MustacheText a
   | MustacheSection String MustacheAST
-  | MustacheInvertedSection String
+  | MustacheInvertedSection String MustacheAST
   | MustacheVariable Bool String
   | MustachePartial String
+  deriving (Show, Eq)
