@@ -1,6 +1,10 @@
 {-# LANGUAGE LambdaCase     #-}
 {-# LANGUAGE NamedFieldPuns #-}
-module Text.Mustache where
+module Text.Mustache
+  ( substitute
+  , compileTemplate
+  , compileTemplateWithCache
+  ) where
 
 
 import           Control.Applicative

@@ -1,4 +1,7 @@
-module Text.Mustache.AST where
+module Text.Mustache.AST
+  ( MustacheAST
+  , MustacheNode(..)
+  ) where
 
 
 type MustacheAST = [MustacheNode String]
