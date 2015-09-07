@@ -42,6 +42,8 @@ main = do
       for_ dataFiles $ \file -> do
         f <- BS.readFile file
 
-        print $
-          (eitherDecode f :: Either String Value) >>=
+        either
+          putStrLn
+          putStrLn
+          $ (eitherDecode f :: Either String Value) >>=
             substitute template
