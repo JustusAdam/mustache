@@ -14,7 +14,24 @@ Since it is so easy to use and requires but a few files of code, I've also writt
 
 ## Usage
 
+### Library
+
 ... Soon™
+
+### Executable `haskell-mustache`
+
+    $ haskell-mustache --help
+    Simple mustache template subtitution
+
+    arguments [OPTIONS] TEMPLATE [DATA-FILES]
+
+    Common flags:
+      -t --templatedirs[=DIRECTORY]  The directory in which to search for the
+                                     templates
+      -? --help                      Display help message
+      -V --version                   Print version information
+
+Currenty substitutes the `TEMPLATE` once with each `DATA-FILE`
 
 ## Roadmap
 
@@ -24,3 +41,5 @@ Since it is so easy to use and requires but a few files of code, I've also writt
 - [ ] Support for 'set delimiter'
 - [ ] More efficiency using `Text` rather than `String`
 - [ ] More efficient Text parsing using source positions
+- [ ] Full unittest coverage
+- [ ] Haddock documentation
