@@ -5,6 +5,9 @@ module Text.Mustache
   , compileTemplate
   , compileTemplateWithCache
   , MustacheTemplate(..)
+  , getFile
+  , getPartials
+  , getPartials'
   ) where
 
 
@@ -33,6 +36,9 @@ import           Text.Parsec.Pos
 import           Text.Printf
 
 
+{-|
+  A compiled Template with metadata.
+-}
 data MustacheTemplate = MustacheTemplate { name     :: String
                                          , ast      :: MustacheAST
                                          , partials :: [MustacheTemplate]
@@ -42,10 +48,25 @@ data MustacheTemplate = MustacheTemplate { name     :: String
 data Context a = Context [a] a
 
 
+{-|
+  Compiles a mustache template provided by name including the mentioned partials.
+
+  The same can be done manually using 'getFile', 'mustacheParser' and 'getPartials'.
+
+  This function also ensures each partial is only compiled once even though it may
+  be included by other partials including itself.
+
+  A reference to the included template will be found in each including templates
+  'partials' section.
+-}
 compileTemplate :: [FilePath] -> FilePath -> IO (Either ParseError MustacheTemplate)
 compileTemplate searchSpace = compileTemplateWithCache searchSpace mempty
 
 
+{-|
+  Compile a mustache template providing a list of precompiled templates that do
+  not have to be recompiled.
+-}
 compileTemplateWithCache :: [FilePath] -> [MustacheTemplate] -> FilePath -> IO (Either ParseError MustacheTemplate)
 compileTemplateWithCache searchSpace = (runEitherT .) . compile'
   where
@@ -62,15 +83,35 @@ compileTemplateWithCache searchSpace = (runEitherT .) . compile'
                 \nt -> return (st { partials = nt : p })
             )
             MustacheTemplate { name = name', ast = compiled, partials = mempty }
-            (join $ fmap getPartials compiled)
+            (getPartials compiled)
 
 
-getPartials :: MustacheNode String -> [FilePath]
-getPartials (MustachePartial p) = return p
-getPartials (MustacheSection _ n) = join $ fmap getPartials n
-getPartials _ = mempty
+{-|
+  Find the names of all included partials in a mustache AST.
+
+  Same as @join . fmap getPartials'@
+-}
+getPartials :: MustacheAST -> [FilePath]
+getPartials = join . fmap getPartials'
 
 
+{-|
+  Find partials in a single MustacheNode
+-}
+getPartials' :: MustacheNode String -> [FilePath]
+getPartials' (MustachePartial p) = return p
+getPartials' (MustacheSection _ n) = getPartials n
+getPartials' _ = mempty
+
+
+{-|
+  @getFile searchSpace file@ iteratively searches all directories in
+  @searchSpace@ for a @file@ returning it if found or raising an error if none
+  of the directories contain the file.
+
+  This trows 'ParseError's to be compatible with the internal Either Monad of
+  'compileTemplateWithCache'.
+-}
 getFile :: [FilePath] -> FilePath -> EitherT ParseError IO String
 getFile [] fp = throwError $ fileNotFound fp
 getFile (templateDir : xs) fp =
@@ -82,9 +123,20 @@ getFile (templateDir : xs) fp =
     filePath = templateDir </> fp
 
 
+{-|
+  Substitutes all mustache defined tokens (or tags) for values found in the
+  provided data structure.
+-}
 substitute :: ToJSON j => MustacheTemplate -> j -> Either String String
-substitute (MustacheTemplate { name = tname, ast, partials }) dataStruct =
-  joinSubstituted (substitute' (Context mempty (toJSON dataStruct))) ast
+substitute t = substituteValue t . toJSON
+
+
+{-|
+  Same as @substituteValue template . toJSON@
+-}
+substituteValue :: MustacheTemplate -> Value -> Either String String
+substituteValue (MustacheTemplate { name = tname, ast, partials }) dataStruct =
+  joinSubstituted (substitute' (Context mempty dataStruct)) ast
   where
     joinSubstituted f = fmap concat . traverse f
 
@@ -140,12 +192,12 @@ substitute (MustacheTemplate { name = tname, ast, partials }) dataStruct =
 
 
 search :: Context Value -> T.Text -> Maybe Value
-search (Context parents focus@(Object o)) val =
-  HM.lookup val o <|> (uncons parents >>=
-    flip search val . uncurry (flip Context))
 search (Context parents focus) val =
-  uncons parents >>=
-    flip search val . uncurry (flip Context)
+  ($ uncons parents >>=
+    flip search val . uncurry (flip Context))
+    (case focus of
+      Object o -> (HM.lookup val o <|>)
+      _ -> id)
 
 
 toString :: Value -> String

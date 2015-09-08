@@ -4,9 +4,11 @@ module Text.Mustache.AST
   ) where
 
 
+-- Abstract syntax tree for a mustache template
 type MustacheAST = [MustacheNode String]
 
 
+-- Basic values composing the AST
 data MustacheNode a
   = MustacheText a
   | MustacheSection String MustacheAST

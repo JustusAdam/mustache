@@ -12,15 +12,15 @@ import           Control.Monad.Error.Class
 import           Control.Monad.State.Class
 import           Control.Monad.Trans
 import           Data.Bool
+import           Data.Char
 import           Data.Function
 import           Data.Monoid
 import           Data.Text
 import           Text.Mustache.AST
-import           Text.Parsec as P hiding (try)
+import           Text.Parsec                         as P hiding (try)
 import           Text.ParserCombinators.Parsec
 import           Text.ParserCombinators.Parsec.Token
 import           Text.Printf
-import Data.Char
 
 
 data MustacheConf = MustacheConf { delimiters :: (String, String) }
@@ -49,6 +49,9 @@ emptyConf = MustacheConf { delimiters = ("", "") }
 type MustacheParser = GenParser Char MustacheConf
 
 
+{-|
+  Runs the parser for a mustache template, returning the syntax tree.
+-}
 mustacheParser :: FilePath -> String -> Either ParseError MustacheAST
 mustacheParser =
   P.runParser (mustacheParseNode Nothing) (emptyConf { delimiters = ("{{", "}}") })
