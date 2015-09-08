@@ -38,6 +38,8 @@ library
                        filepath
   hs-source-dirs:      src/lib
   default-language:    Haskell2010
+  ghc-options:
+    -Wall
 
 
 executable haskell-mustache

@@ -4,15 +4,18 @@ module Text.Mustache.AST
   ) where
 
 
+import Data.Text
+
+
 -- Abstract syntax tree for a mustache template
-type MustacheAST = [MustacheNode String]
+type MustacheAST = [MustacheNode Text]
 
 
 -- Basic values composing the AST
 data MustacheNode a
   = MustacheText a
-  | MustacheSection String MustacheAST
-  | MustacheInvertedSection String MustacheAST
-  | MustacheVariable Bool String
-  | MustachePartial String
+  | MustacheSection Text MustacheAST
+  | MustacheInvertedSection Text MustacheAST
+  | MustacheVariable Bool Text
+  | MustachePartial FilePath
   deriving (Show, Eq)

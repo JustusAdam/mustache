@@ -38,8 +38,8 @@ Currenty substitutes the `TEMPLATE` once with each `DATA-FILE`
 - [x] String parser for mustache templates
 - [x] Template substitution
 - [x] Standalone executable
-- [ ] Support for 'set delimiter'
-- [ ] More efficiency using `Text` rather than `String`
+- [x] Support for 'set delimiter'
+- [x] More efficiency using `Text` rather than `String`
 - [ ] More efficient Text parsing using source positions
 - [ ] Full unittest coverage
 - [ ] Haddock documentation
