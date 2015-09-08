@@ -1,4 +1,4 @@
-# mustache
+# mustache [![Travis Status](https://travis-ci.org/JustusAdam/mustache.svg?branch=master)](https://travis-ci.org/JustusAdam/mustache)
 
 Haskell implementation of [mustache templates][mustache-homepage] based on instances of the ToJSON typeclass.
 
