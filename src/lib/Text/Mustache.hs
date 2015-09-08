@@ -4,6 +4,7 @@ module Text.Mustache
   ( substitute
   , compileTemplate
   , compileTemplateWithCache
+  , MustacheTemplate(..)
   ) where
 
 
