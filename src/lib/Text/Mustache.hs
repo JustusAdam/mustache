@@ -14,18 +14,15 @@ module Text.Mustache
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Except
-import           Control.Monad.Trans
 import           Control.Monad.Trans.Either
 import           Data.Aeson
 import           Data.Bool
 import           Data.Foldable
-import           Data.HashMap.Strict        as HM
+import           Data.HashMap.Strict        as HM hiding (map)
 import           Data.List
 import           Data.Monoid
 import qualified Data.Text                  as T
-import           Data.Traversable
 import qualified Data.Vector                as V
-import           Debug.Trace
 import           System.Directory
 import           System.FilePath
 import           Text.HTML.TagSoup          (escapeHTML)
@@ -34,6 +31,8 @@ import           Text.Mustache.Parser
 import           Text.Parsec.Error
 import           Text.Parsec.Pos
 import           Text.Printf
+import Data.Text hiding (find, concat, uncons, map)
+import qualified Data.Text.IO as TIO
 
 
 {-|
@@ -98,7 +97,7 @@ getPartials = join . fmap getPartials'
 {-|
   Find partials in a single MustacheNode
 -}
-getPartials' :: MustacheNode String -> [FilePath]
+getPartials' :: MustacheNode Text -> [FilePath]
 getPartials' (MustachePartial p) = return p
 getPartials' (MustacheSection _ n) = getPartials n
 getPartials' _ = mempty
@@ -112,13 +111,13 @@ getPartials' _ = mempty
   This trows 'ParseError's to be compatible with the internal Either Monad of
   'compileTemplateWithCache'.
 -}
-getFile :: [FilePath] -> FilePath -> EitherT ParseError IO String
+getFile :: [FilePath] -> FilePath -> EitherT ParseError IO Text
 getFile [] fp = throwError $ fileNotFound fp
 getFile (templateDir : xs) fp =
   lift (doesFileExist filePath) >>=
     bool
       (getFile xs fp)
-      (lift $ readFile filePath)
+      (lift $ TIO.readFile filePath)
   where
     filePath = templateDir </> fp
 
@@ -127,28 +126,28 @@ getFile (templateDir : xs) fp =
   Substitutes all mustache defined tokens (or tags) for values found in the
   provided data structure.
 -}
-substitute :: ToJSON j => MustacheTemplate -> j -> Either String String
+substitute :: ToJSON j => MustacheTemplate -> j -> Either String Text
 substitute t = substituteValue t . toJSON
 
 
 {-|
   Same as @substituteValue template . toJSON@
 -}
-substituteValue :: MustacheTemplate -> Value -> Either String String
-substituteValue (MustacheTemplate { name = tname, ast, partials }) dataStruct =
-  joinSubstituted (substitute' (Context mempty dataStruct)) ast
+substituteValue :: MustacheTemplate -> Value -> Either String Text
+substituteValue (MustacheTemplate { ast = cast, partials }) dataStruct =
+  joinSubstituted (substitute' (Context mempty dataStruct)) cast
   where
-    joinSubstituted f = fmap concat . traverse f
+    joinSubstituted f = fmap fold . traverse f
 
     -- Main substitution function
-    substitute' :: Context Value -> MustacheNode String -> Either String String
+    substitute' :: Context Value -> MustacheNode Text -> Either String Text
 
     -- subtituting text
     substitute' _ (MustacheText t) = return t
 
     -- substituting a whole section (entails a focus shift)
-    substitute' context@(Context parents focus) (MustacheSection name ast) =
-      case search context (T.pack name) of
+    substitute' context@(Context parents focus) (MustacheSection name ast') =
+      case search context name of
         Just arr@(Array a) ->
           if V.null a
             then return mempty
@@ -157,38 +156,39 @@ substituteValue (MustacheTemplate { name = tname, ast, partials }) dataStruct =
                 let
                   newContext = Context (arr:focus:parents) focus'
                 in
-                  joinSubstituted (substitute' newContext) ast
+                  joinSubstituted (substitute' newContext) ast'
               _ -> return mempty
         Just (Bool b) | not b -> return mempty
         Just focus' ->
           let
             newContext = Context (focus:parents) focus'
           in
-            joinSubstituted (substitute' newContext) ast
+            joinSubstituted (substitute' newContext) ast'
         Nothing -> return mempty
 
     -- substituting an inverted section
-    substitute' context (MustacheInvertedSection name ast) =
-      case search context (T.pack name) of
+    substitute' context (MustacheInvertedSection name ast') =
+      case search context name of
         Just (Bool False) -> contents
         Just (Array a) | V.null a -> contents
         Nothing -> contents
         _ -> return mempty
       where
-        contents = joinSubstituted (substitute' context) ast
+        contents = joinSubstituted (substitute' context) ast'
 
     -- substituting a variable
     substitute' context (MustacheVariable escaped name) =
       return $ maybe
         mempty
         (if escaped then escapeHTML else id)
-        $ toString <$> search context (T.pack name)
+        $ toString <$> search context name
 
     -- substituting a partial
     substitute' context (MustachePartial name') =
-      case find ((== name') . name) partials of
-        Just (MustacheTemplate { ast }) -> joinSubstituted (substitute' context) ast
-        Nothing -> Left $ printf "Could not find partial '%s'" name'
+      maybe
+        (Left $ printf "Could not find partial '%s'" name')
+        (joinSubstituted (substitute' context) . ast)
+        $ find ((== name') . name) partials
 
 
 search :: Context Value -> T.Text -> Maybe Value
@@ -200,9 +200,9 @@ search (Context parents focus) val =
       _ -> id)
 
 
-toString :: Value -> String
-toString (String t) = T.unpack t
-toString e = show e
+toString :: Value -> Text
+toString (String t) = t
+toString e = pack $ show e
 
 
 -- ERRORS
