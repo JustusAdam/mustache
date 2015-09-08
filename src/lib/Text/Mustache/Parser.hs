@@ -9,12 +9,12 @@ module Text.Mustache.Parser
 
 import           Data.Bool
 import           Data.Char
+import           Data.Functor
 import           Data.Monoid
 import           Data.Text
 import           Text.Mustache.AST
-import           Text.Parsec                         as P
+import           Text.Parsec         as P
 import           Text.Printf
-import Data.Functor
 
 
 data MustacheConf = MustacheConf { delimiters :: (String, String) }
@@ -36,7 +36,7 @@ delimiterChange :: String
 delimiterChange = "="
 allowedDelimiterCharacter :: MustacheParser Char
 allowedDelimiterCharacter =
-  satisfy $ not . or . sequenceA [ isSpace, isAlphaNum ]
+  satisfy $ not . or . sequence [ isSpace, isAlphaNum ]
 
 
 mustacheAllowedCharacters :: MustacheParser Char
