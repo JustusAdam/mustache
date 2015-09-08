@@ -150,13 +150,11 @@ substituteValue (MustacheTemplate { ast = cAst, partials = cPartials }) dataStru
         Just arr@(Array arrCont) ->
           if V.null arrCont
             then return mempty
-            else flip joinSubstituted arrCont $ \case
-              focus'@(Object _) ->
-                let
-                  newContext = Context (arr:focus:parents) focus'
-                in
-                  joinSubstituted (substitute' newContext) secAST
-              _ -> return mempty
+            else flip joinSubstituted arrCont $ \focus' ->
+              let
+                newContext = Context (arr:focus:parents) focus'
+              in
+                joinSubstituted (substitute' newContext) secAST
         Just (Bool b) | not b -> return mempty
         Just focus' ->
           let

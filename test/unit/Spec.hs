@@ -3,7 +3,7 @@ module Main where
 
 
 import           Data.Aeson
-import           Data.Monoid
+import           Data.Either
 import qualified Data.Text            as T
 import           Test.Hspec
 import           Text.Mustache
@@ -11,6 +11,7 @@ import           Text.Mustache.AST
 import           Text.Mustache.Parser
 
 
+parserSpec :: Spec
 parserSpec =
   describe "mustacheParser" $ do
     let parse = mustacheParser "testsuite"
@@ -81,11 +82,15 @@ parserSpec =
       parse "{{#section}}{{=<< >>=}}<</section>><<var>>" `shouldBe`
         return [MustacheSection "section" [], MustacheVariable True "var"]
 
+    it "fails if the tag contains illegal characters" $
+      parse "{{#&}}" `shouldSatisfy` isLeft
 
+
+substituteSpec :: Spec
 substituteSpec =
   describe "substitute" $ do
 
-    let toTemplate ast = MustacheTemplate "testsuite" ast []
+    let toTemplate ast' = MustacheTemplate "testsuite" ast' []
 
     it "substitutes a html escaped value for a variable" $
       substitute
@@ -105,6 +110,56 @@ substituteSpec =
         (object ["section" .= object []])
       `shouldBe` return "t"
 
+    it "substitutes a section when the key is present (and 'true')" $
+      substitute
+        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (object ["section" .= True])
+      `shouldBe` return "t"
+
+    it "substitutes a section once when the key is present and a singleton list" $
+      substitute
+        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (object ["section" .= ["True" :: T.Text]])
+      `shouldBe` return "t"
+
+    it "substitutes a section twice when the key is present and a list with two items" $
+      substitute
+        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (object ["section" .= (["True", "False"] :: [T.Text])])
+      `shouldBe` return "tt"
+
+    it "substitutes a section twice when the key is present and a list with two\
+    \ objects, changing the scope to each object" $
+      substitute
+        (toTemplate [MustacheSection "section" [MustacheVariable True "t"]])
+        (object
+          [ "section" .=
+            [ object ["t" .= ("var1" :: T.Text)]
+            , object ["t" .= ("var2" :: T.Text)]
+            ]
+          ])
+      `shouldBe` return "var1var2"
+
+    it "does not substitute a section when the key is not present" $
+      substitute
+        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (object [])
+      `shouldBe` return ""
+
+    it "does not substitute a section when the key is present (and 'false')" $
+      substitute
+        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (object ["section" .= False])
+      `shouldBe` return ""
+
+    it "does not substitute a section when the key is present (and empty list)" $
+      substitute
+        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (object ["section" .= ([] :: [T.Text])])
+      `shouldBe` return ""
+
+
+main :: IO ()
 main = hspec $ do
   parserSpec
   substituteSpec
