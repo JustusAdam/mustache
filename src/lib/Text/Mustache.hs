@@ -1,5 +1,4 @@
-{-# LANGUAGE LambdaCase     #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE LambdaCase #-}
 module Text.Mustache
   ( substitute
   , compileTemplate
@@ -21,7 +20,9 @@ import           Data.Foldable
 import           Data.HashMap.Strict        as HM hiding (map)
 import           Data.List
 import           Data.Monoid
+import           Data.Text                  hiding (concat, find, map, uncons)
 import qualified Data.Text                  as T
+import qualified Data.Text.IO               as TIO
 import qualified Data.Vector                as V
 import           System.Directory
 import           System.FilePath
@@ -31,8 +32,6 @@ import           Text.Mustache.Parser
 import           Text.Parsec.Error
 import           Text.Parsec.Pos
 import           Text.Printf
-import Data.Text hiding (find, concat, uncons, map)
-import qualified Data.Text.IO as TIO
 
 
 {-|
@@ -134,8 +133,8 @@ substitute t = substituteValue t . toJSON
   Same as @substituteValue template . toJSON@
 -}
 substituteValue :: MustacheTemplate -> Value -> Either String Text
-substituteValue (MustacheTemplate { ast = cast, partials }) dataStruct =
-  joinSubstituted (substitute' (Context mempty dataStruct)) cast
+substituteValue (MustacheTemplate { ast = cAst, partials = cPartials }) dataStruct =
+  joinSubstituted (substitute' (Context mempty dataStruct)) cAst
   where
     joinSubstituted f = fmap fold . traverse f
 
@@ -146,49 +145,49 @@ substituteValue (MustacheTemplate { ast = cast, partials }) dataStruct =
     substitute' _ (MustacheText t) = return t
 
     -- substituting a whole section (entails a focus shift)
-    substitute' context@(Context parents focus) (MustacheSection name ast') =
-      case search context name of
-        Just arr@(Array a) ->
-          if V.null a
+    substitute' context@(Context parents focus) (MustacheSection secName secAST) =
+      case search context secName of
+        Just arr@(Array arrCont) ->
+          if V.null arrCont
             then return mempty
-            else flip joinSubstituted a $ \case
+            else flip joinSubstituted arrCont $ \case
               focus'@(Object _) ->
                 let
                   newContext = Context (arr:focus:parents) focus'
                 in
-                  joinSubstituted (substitute' newContext) ast'
+                  joinSubstituted (substitute' newContext) secAST
               _ -> return mempty
         Just (Bool b) | not b -> return mempty
         Just focus' ->
           let
             newContext = Context (focus:parents) focus'
           in
-            joinSubstituted (substitute' newContext) ast'
+            joinSubstituted (substitute' newContext) secAST
         Nothing -> return mempty
 
     -- substituting an inverted section
-    substitute' context (MustacheInvertedSection name ast') =
-      case search context name of
+    substitute' context (MustacheInvertedSection invSecName invSecAST) =
+      case search context invSecName of
         Just (Bool False) -> contents
         Just (Array a) | V.null a -> contents
         Nothing -> contents
         _ -> return mempty
       where
-        contents = joinSubstituted (substitute' context) ast'
+        contents = joinSubstituted (substitute' context) invSecAST
 
     -- substituting a variable
-    substitute' context (MustacheVariable escaped name) =
+    substitute' context (MustacheVariable escaped varName) =
       return $ maybe
         mempty
         (if escaped then escapeHTML else id)
-        $ toString <$> search context name
+        $ toString <$> search context varName
 
     -- substituting a partial
-    substitute' context (MustachePartial name') =
+    substitute' context (MustachePartial pName) =
       maybe
-        (Left $ printf "Could not find partial '%s'" name')
+        (Left $ printf "Could not find partial '%s'" pName)
         (joinSubstituted (substitute' context) . ast)
-        $ find ((== name') . name) partials
+        $ find ((== pName) . name) cPartials
 
 
 search :: Context Value -> T.Text -> Maybe Value
@@ -207,4 +206,5 @@ toString e = pack $ show e
 
 -- ERRORS
 
+fileNotFound :: FilePath -> ParseError
 fileNotFound fp = newErrorMessage (Message $ printf "Template file '%s' not found" fp) (initialPos fp)

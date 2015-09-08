@@ -2,13 +2,13 @@
 module Spec where
 
 
-import Test.Hspec
-import Text.Mustache.Parser
-import Text.Mustache.AST
-import Text.Mustache
-import Data.Monoid
-import Data.Aeson
-import qualified Data.Text as T
+import           Data.Aeson
+import           Data.Monoid
+import qualified Data.Text            as T
+import           Test.Hspec
+import           Text.Mustache
+import           Text.Mustache.AST
+import           Text.Mustache.Parser
 
 
 parserSpec =

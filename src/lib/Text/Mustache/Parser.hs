@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
 module Text.Mustache.Parser
@@ -21,23 +20,33 @@ import Data.Functor
 data MustacheConf = MustacheConf { delimiters :: (String, String) }
 
 
+sectionBegin :: String
 sectionBegin = "#"
+sectionEnd :: String
 sectionEnd = "/"
+partialBegin :: String
 partialBegin = ">"
+invertedSectionBegin :: String
 invertedSectionBegin = "^"
+unescape2 :: (String, String)
 unescape2 = ("{", "}")
+unescape1 :: String
 unescape1 = "&"
+delimiterChange :: String
 delimiterChange = "="
+allowedDelimiterCharacter :: MustacheParser Char
 allowedDelimiterCharacter =
   satisfy $ not . or . sequenceA [ isSpace, isAlphaNum ]
 
 
+mustacheAllowedCharacters :: MustacheParser Char
 mustacheAllowedCharacters =
   choice $
     alphaNum
     : fmap char "-_"
 
 
+emptyConf :: MustacheConf
 emptyConf = MustacheConf { delimiters = ("", "") }
 
 
@@ -129,6 +138,7 @@ mustacheParseNode name = do
 
 -- ERRORS
 
+unexpectedSection :: String -> String
 unexpectedSection = printf "No such section '%s'"
 unexpectedClosingSequence :: String -> String -> String
 unexpectedClosingSequence = printf "Expected closing sequence for section '%s' got '%s'"
