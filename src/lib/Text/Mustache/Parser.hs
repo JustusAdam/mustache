@@ -33,9 +33,9 @@ import           Data.Foldable
 import           Data.Functor
 import           Data.Monoid
 import           Data.Text         as T
+import           Prelude           as Prel
 import           Text.Mustache.AST
 import           Text.Parsec       as P hiding (parse)
-import           Text.Printf
 
 
 data MustacheConf = MustacheConf
@@ -60,7 +60,7 @@ unescape1 = "&"
 delimiterChange :: String
 delimiterChange = "="
 isAllowedDelimiterCharacter :: Char -> Bool
-isAllowedDelimiterCharacter = not . or . sequence [ isSpace, isAlphaNum ]
+isAllowedDelimiterCharacter = not . Prel.or . sequence [ isSpace, isAlphaNum ]
 allowedDelimiterCharacter :: MustacheParser Char
 allowedDelimiterCharacter =
   satisfy isAllowedDelimiterCharacter
@@ -205,12 +205,15 @@ parseNavigation smod emod = do
 
 -- ERRORS
 
+sectionToString :: [Text] -> String
+sectionToString = unpack . intercalate "."
+
 unexpectedSection :: [Text] -> String
-unexpectedSection = printf "No such section '%s'" . unpack . fold
+unexpectedSection s = "No such section '" <> sectionToString s <> "'"
 unexpectedClosingSequence :: [Text] -> [Text] -> String
 unexpectedClosingSequence tag1 tag2 =
   "Expected closing sequence for section '"
-  <> unpack (fold tag1)
+  <> sectionToString tag1
   <> "' got '"
-  <> unpack (fold tag2)
+  <> sectionToString tag2
   <> "'"
