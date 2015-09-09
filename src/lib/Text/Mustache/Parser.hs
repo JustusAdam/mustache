@@ -30,6 +30,7 @@ module Text.Mustache.Parser
 import           Control.Monad
 import           Data.Char
 import           Data.Foldable
+import           Data.Functor
 import           Data.Monoid
 import           Data.Text         as T
 import           Text.Mustache.AST
