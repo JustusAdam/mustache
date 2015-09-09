@@ -106,7 +106,7 @@ compileTemplateWithCache searchSpace = (runEitherT .) . compile'
 
 
 parseTemplate :: String -> Text -> Either ParseError MustacheTemplate
-parseTemplate name' = fmap (flip (MustacheTemplate name') mempty) . mustacheParser name'
+parseTemplate name' = fmap (flip (MustacheTemplate name') mempty) . parse name'
 
 
 {-|

@@ -3,34 +3,38 @@
 {-# LANGUAGE TupleSections     #-}
 module Text.Mustache.Parser
   (
-  -- * Generic parser
+  -- * Generic parsing functions
 
-    mustacheParser
+    parse, parseWithConf
+
+  -- * Configurations
+
+  , MustacheConf, emptyConf, defaultConf
+
+  -- * Parser
+
+  , MustacheParser
+
+  -- ** Components
+
+
 
   -- * Mustache Constants
 
   , sectionBegin, sectionEnd, invertedSectionBegin, unescape2, unescape1
   , delimiterChange
 
-  -- * Parser configurations
-
-  , MustacheConf, emptyConf, defaultConf
-
-  -- * Parser util
-
-  , MustacheParser, parseTag, mustacheParseNode
   ) where
 
 
+import           Control.Monad
 import           Data.Char
 import           Data.Foldable
-import           Data.Functor
 import           Data.Monoid
-import           Data.Text as T
+import           Data.Text         as T
 import           Text.Mustache.AST
-import           Text.Parsec       as P
+import           Text.Parsec       as P hiding (parse)
 import           Text.Printf
-import Control.Monad
 
 
 data MustacheConf = MustacheConf
@@ -83,69 +87,73 @@ type MNodeParser = MustacheParser (MustacheNode Text)
 {-|
   Runs the parser for a mustache template, returning the syntax tree.
 -}
-mustacheParser :: FilePath -> Text -> Either ParseError MustacheAST
-mustacheParser =
-  P.runParser (mustacheParseNode Nothing) defaultConf
+parse :: FilePath -> Text -> Either ParseError MustacheAST
+parse = parseWithConf defaultConf
 
 
-parseTag :: String -> String -> MustacheParser String
-parseTag start end = do
-  void $ string start
-  spaces
-  mustacheAllowedCharacters `manyTill` try (skipMany space >> string end)
+parseWithConf :: MustacheConf -> FilePath -> Text -> Either ParseError MustacheAST
+parseWithConf = P.runParser (parseText Nothing)
 
 
-mustacheParseNode :: Maybe [Text] -> MustacheParser MustacheAST
-mustacheParseNode
+parseText :: Maybe [Text] -> MustacheParser MustacheAST
+parseText
   name = do
     (MustacheConf { delimiters = ( start, _ )}) <- getState
     let endOfText = try (void $ string start) <|> try eof
     content <- pack <$> manyTill anyChar (lookAhead endOfText)
-    others <- choice
-      [ try (parseEnd name)
-      , try parseSection >>= continue
-      , try parseInvertedSection >>= continue
-      , try parseUnescapedVar >>= continue
-      , try (parseDelimiterChange name)
-      , try parsePartial >>= continue
-      , try parseVariable >>= continue
-      , eof >> maybe (return []) (parserFail . ("Unclosed section " <>) . unpack . fold) name
-      ]
+    others <- parseTag name
     return $ if T.null content
               then others
               else MustacheText content : others
-  where
-    continue val = (val :) <$> mustacheParseNode name
 
+
+
+parseTag :: Maybe [Text] -> MustacheParser MustacheAST
+parseTag name = choice
+  [ parseEnd name >> return []
+  , parseSection >>= continue
+  , parseInvertedSection >>= continue
+  , parseUnescapedVar >>= continue
+  , parseDelimiterChange >> parseText name
+  , parsePartial >>= continue
+  , parseVariable >>= continue
+  , eof >> maybe (return []) (parserFail . ("Unclosed section " <>) . unpack . fold) name
+  ]
+  where
+    continue val = (val :) <$> parseText name
 
 parseSection :: MNodeParser
 parseSection = do
   sectionName <- parseNavigation sectionBegin mempty
-  MustacheSection sectionName <$> mustacheParseNode (return sectionName)
+  MustacheSection sectionName <$> parseText (return sectionName)
 
 
 parsePartial :: MNodeParser
 parsePartial = do
   (MustacheConf { delimiters = ( start, end )}) <- getState
-  MustachePartial <$> parseTag (start <> partialBegin) end
+  let pStart = start <> partialBegin
+      pEnd = end
+  void $ try $ string pStart
+  spaces
+  MustachePartial <$>
+    mustacheAllowedCharacters `manyTill` try (skipMany space >> string pEnd)
 
 
-parseDelimiterChange :: Maybe [Text] -> MustacheParser MustacheAST
-parseDelimiterChange name = do
+parseDelimiterChange :: MustacheParser ()
+parseDelimiterChange = do
   (MustacheConf { delimiters = ( start, end )}) <- getState
-  void $ string (start <> delimiterChange)
+  void $ try $ string (start <> delimiterChange)
   delim1 <- allowedDelimiterCharacter `manyTill` space
   spaces
   delim2 <- allowedDelimiterCharacter `manyTill` try (string $ delimiterChange <> end)
   oldState <- getState
   putState $ oldState { delimiters = (delim1, delim2) }
-  mustacheParseNode name
 
 
 parseInvertedSection :: MNodeParser
 parseInvertedSection = do
   sectionName <- parseNavigation invertedSectionBegin mempty
-  MustacheInvertedSection sectionName <$> mustacheParseNode (return sectionName)
+  MustacheInvertedSection sectionName <$> parseText (return sectionName)
 
 
 parseUnescapedVar :: MNodeParser
@@ -157,16 +165,15 @@ parseVariable :: MNodeParser
 parseVariable = MustacheVariable True <$> parseNavigation mempty mempty
 
 
-parseEnd :: Maybe [Text] -> MustacheParser MustacheAST
+parseEnd :: Maybe [Text] -> MustacheParser ()
 parseEnd name = do
   tag <- parseNavigation sectionEnd mempty
-  if isSameSection tag
-    then return []
-    else parserFail $
-          maybe
-            (unexpectedSection tag)
-            (`unexpectedClosingSequence` tag)
-            name
+  unless (isSameSection tag) $
+    parserFail $
+      maybe
+        (unexpectedSection tag)
+        (`unexpectedClosingSequence` tag)
+        name
   where
     isSameSection = maybe (const True) (==) name
 
@@ -176,7 +183,7 @@ parseNavigation smod emod = do
   (MustacheConf { delimiters = ( start, end ), dotNavigation = dotNav }) <- getState
   let nStart = start <> smod
       nEnd = emod <> end
-  void $ string nStart
+  void $ try $ string nStart
   parseOne dotNav nStart nEnd
   where
     parseOne dotNav nStart nEnd = do

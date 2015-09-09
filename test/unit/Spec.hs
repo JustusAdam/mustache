@@ -14,76 +14,76 @@ import           Text.Mustache.Parser
 parserSpec :: Spec
 parserSpec =
   describe "mustacheParser" $ do
-    let parse = mustacheParser "testsuite"
+    let lparse = parse "testsuite"
     let returnedOne = return . return
 
     let text = "test12356p0--=-34{}jnv,\n"
 
     it "parses text" $
-      parse text `shouldBe` returnedOne (MustacheText text)
+      lparse text `shouldBe` returnedOne (MustacheText text)
 
     it "parses a variable" $
-      parse "{{name}}" `shouldBe` returnedOne (MustacheVariable True ["name"])
+      lparse "{{name}}" `shouldBe` returnedOne (MustacheVariable True ["name"])
 
     it "parses a variable with whitespace" $
-      parse "{{ name  }}" `shouldBe` returnedOne (MustacheVariable True ["name"])
+      lparse "{{ name  }}" `shouldBe` returnedOne (MustacheVariable True ["name"])
 
     it "allows '-' in variable names" $
-      parse "{{ name-name }}" `shouldBe`
+      lparse "{{ name-name }}" `shouldBe`
         returnedOne (MustacheVariable True ["name-name"])
 
     it "allows '_' in variable names" $
-      parse "{{ name_name }}" `shouldBe`
+      lparse "{{ name_name }}" `shouldBe`
         returnedOne (MustacheVariable True ["name_name"])
 
     it "parses a variable unescaped with {{{}}}" $
-      parse "{{{name}}}" `shouldBe` returnedOne (MustacheVariable False ["name"])
+      lparse "{{{name}}}" `shouldBe` returnedOne (MustacheVariable False ["name"])
 
     it "parses a variable unescaped with {{{}}} with whitespace" $
-      parse "{{{  name     }}}" `shouldBe`
+      lparse "{{{  name     }}}" `shouldBe`
         returnedOne (MustacheVariable False ["name"])
 
     it "parses a variable unescaped with &" $
-      parse "{{&name}}" `shouldBe` returnedOne (MustacheVariable False ["name"])
+      lparse "{{&name}}" `shouldBe` returnedOne (MustacheVariable False ["name"])
 
     it "parses a variable unescaped with & with whitespace" $
-      parse "{{&  name  }}" `shouldBe`
+      lparse "{{&  name  }}" `shouldBe`
         returnedOne (MustacheVariable False ["name"])
 
     it "parses a partial" $
-      parse "{{>myPartial}}" `shouldBe`
+      lparse "{{>myPartial}}" `shouldBe`
         returnedOne (MustachePartial "myPartial")
 
     it "parses a partial with whitespace" $
-      parse "{{>  myPartial }}" `shouldBe`
+      lparse "{{>  myPartial }}" `shouldBe`
         returnedOne (MustachePartial "myPartial")
 
     it "parses the an empty section" $
-      parse "{{#section}}{{/section}}" `shouldBe`
+      lparse "{{#section}}{{/section}}" `shouldBe`
         returnedOne (MustacheSection ["section"] mempty)
 
     it "parses the an empty section with whitespace" $
-      parse "{{#   section }}{{/     section }}" `shouldBe`
+      lparse "{{#   section }}{{/     section }}" `shouldBe`
         returnedOne (MustacheSection ["section"] mempty)
 
     it "parses a delimiter change" $
-      parse "{{=<< >>=}}<<var>>{{var}}" `shouldBe`
+      lparse "{{=<< >>=}}<<var>>{{var}}" `shouldBe`
         return [MustacheVariable True ["var"], MustacheText "{{var}}"]
 
     it "parses a delimiter change with whitespace" $
-      parse "{{=<<   >>=}}<< var   >>{{var}}" `shouldBe`
+      lparse "{{=<<   >>=}}<< var   >>{{var}}" `shouldBe`
         return [MustacheVariable True ["var"], MustacheText "{{var}}"]
 
     it "parses two subsequent delimiter changes" $
-      parse "{{=((  ))=}}(( var ))((=--  $-=))--#section$---/section$-" `shouldBe`
+      lparse "{{=((  ))=}}(( var ))((=--  $-=))--#section$---/section$-" `shouldBe`
         return [MustacheVariable True ["var"], MustacheSection ["section"] []]
 
     it "propagates a delimiter change from a nested scope" $
-      parse "{{#section}}{{=<< >>=}}<</section>><<var>>" `shouldBe`
+      lparse "{{#section}}{{=<< >>=}}<</section>><<var>>" `shouldBe`
         return [MustacheSection ["section"] [], MustacheVariable True ["var"]]
 
     it "fails if the tag contains illegal characters" $
-      parse "{{#&}}" `shouldSatisfy` isLeft
+      lparse "{{#&}}" `shouldSatisfy` isLeft
 
 
 substituteSpec :: Spec
