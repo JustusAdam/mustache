@@ -4,6 +4,7 @@ module Main where
 
 import           Data.Aeson
 import           Data.Either
+import           Data.Monoid          (mempty)
 import qualified Data.Text            as T
 import           Test.Hspec
 import           Text.Mustache
