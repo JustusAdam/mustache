@@ -49,4 +49,4 @@ main = do
           putStrLn
           TIO.putStrLn
           $ (eitherDecode f :: Either String Value) >>=
-            substitute compiledTemplate
+            substitute compiledTemplate . toMustache

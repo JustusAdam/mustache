@@ -34,14 +34,12 @@ import           Data.Functor
 import           Data.Monoid
 import           Data.Text         as T
 import           Prelude           as Prel
-import           Text.Mustache.AST
+import           Text.Mustache.Types
 import           Text.Parsec       as P hiding (parse)
 
 
 data MustacheConf = MustacheConf
   { delimiters      :: (String, String)
-  , dotNavigation   :: Bool
-  , bracketIndexing :: Bool
   }
 
 
@@ -66,15 +64,8 @@ allowedDelimiterCharacter =
   satisfy isAllowedDelimiterCharacter
 
 
-mustacheAllowedCharacters :: MustacheParser Char
-mustacheAllowedCharacters =
-  choice $
-    alphaNum
-    : fmap char "-_"
-
-
 emptyConf :: MustacheConf
-emptyConf = MustacheConf ("", "") False False
+emptyConf = MustacheConf ("", "")
 
 
 defaultConf :: MustacheConf
@@ -137,7 +128,7 @@ parsePartial = do
   void $ try $ string pStart
   spaces
   MustachePartial <$>
-    mustacheAllowedCharacters `manyTill` try (skipMany space >> string pEnd)
+    anyChar `manyTill` try (skipMany space >> string pEnd)
 
 
 parseDelimiterChange :: MustacheParser ()
@@ -181,26 +172,18 @@ parseEnd name = do
 
 parseNavigation :: String -> String -> MustacheParser [Text]
 parseNavigation smod emod = do
-  (MustacheConf { delimiters = ( start, end ), dotNavigation = dotNav }) <- getState
+  (MustacheConf { delimiters = ( start, end ) }) <- getState
   let nStart = start <> smod
       nEnd = emod <> end
   void $ try $ string nStart
-  parseOne dotNav nStart nEnd
+  parseOne nStart nEnd
   where
-    parseOne dotNav nStart nEnd = do
+    parseOne :: String -> String -> MustacheParser [Text]
+    parseOne nStart nEnd = do
       spaces
-      one <- mustacheAllowedCharacters `manyTill` (try spaces >> lookAhead (try (void $ string nEnd) <|> dotNavigationEndModifier))
-      others <- dotNavigationParseContinuation <|> (const mempty <$> string nEnd)
+      one <- anyChar `manyTill` lookAhead (try (spaces >> void (string nEnd)) <|> try (void $ char '.'))
+      others <- (char '.' >> parseOne nStart nEnd) <|> (const mempty <$> string nEnd)
       return $ pack one : others
-      where
-        dotNavigationEndModifier =
-          if dotNav
-            then try (void $ char '.')
-            else mzero
-        dotNavigationParseContinuation =
-          if dotNav
-            then char '.' >> parseOne dotNav nStart nEnd
-            else mzero
 
 
 -- ERRORS

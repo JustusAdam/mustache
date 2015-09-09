@@ -8,7 +8,7 @@ import           Data.Monoid          (mempty)
 import qualified Data.Text            as T
 import           Test.Hspec
 import           Text.Mustache
-import           Text.Mustache.AST
+import           Text.Mustache.Types
 import           Text.Mustache.Parser
 
 

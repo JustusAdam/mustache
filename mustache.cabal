@@ -30,8 +30,10 @@ source-repository head
 
 library
   exposed-modules:     Text.Mustache,
-                       Text.Mustache.AST,
-                       Text.Mustache.Parser
+                       Text.Mustache.Types,
+                       Text.Mustache.Parser,
+                       Text.Mustache.Compile,
+                       Text.Mustache.Render
   other-modules:       Text.Mustache.Internal
   other-extensions:    NamedFieldPuns, OverloadedStrings, LambdaCase, TupleSections, CPP
   build-depends:       base >=4.7 && <5,
@@ -47,7 +49,8 @@ library
                        bytestring,
                        hspec,
                        directory,
-                       filepath
+                       filepath,
+                       scientific
   hs-source-dirs:      src/lib
   default-language:    Haskell2010
   ghc-options:
