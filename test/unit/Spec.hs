@@ -23,32 +23,32 @@ parserSpec =
       parse text `shouldBe` returnedOne (MustacheText text)
 
     it "parses a variable" $
-      parse "{{name}}" `shouldBe` returnedOne (MustacheVariable True "name")
+      parse "{{name}}" `shouldBe` returnedOne (MustacheVariable True ["name"])
 
     it "parses a variable with whitespace" $
-      parse "{{ name  }}" `shouldBe` returnedOne (MustacheVariable True "name")
+      parse "{{ name  }}" `shouldBe` returnedOne (MustacheVariable True ["name"])
 
     it "allows '-' in variable names" $
       parse "{{ name-name }}" `shouldBe`
-        returnedOne (MustacheVariable True "name-name")
+        returnedOne (MustacheVariable True ["name-name"])
 
     it "allows '_' in variable names" $
       parse "{{ name_name }}" `shouldBe`
-        returnedOne (MustacheVariable True "name_name")
+        returnedOne (MustacheVariable True ["name_name"])
 
     it "parses a variable unescaped with {{{}}}" $
-      parse "{{{name}}}" `shouldBe` returnedOne (MustacheVariable False "name")
+      parse "{{{name}}}" `shouldBe` returnedOne (MustacheVariable False ["name"])
 
     it "parses a variable unescaped with {{{}}} with whitespace" $
       parse "{{{  name     }}}" `shouldBe`
-        returnedOne (MustacheVariable False "name")
+        returnedOne (MustacheVariable False ["name"])
 
     it "parses a variable unescaped with &" $
-      parse "{{&name}}" `shouldBe` returnedOne (MustacheVariable False "name")
+      parse "{{&name}}" `shouldBe` returnedOne (MustacheVariable False ["name"])
 
     it "parses a variable unescaped with & with whitespace" $
       parse "{{&  name  }}" `shouldBe`
-        returnedOne (MustacheVariable False "name")
+        returnedOne (MustacheVariable False ["name"])
 
     it "parses a partial" $
       parse "{{>myPartial}}" `shouldBe`
@@ -60,27 +60,27 @@ parserSpec =
 
     it "parses the an empty section" $
       parse "{{#section}}{{/section}}" `shouldBe`
-        returnedOne (MustacheSection "section" mempty)
+        returnedOne (MustacheSection ["section"] mempty)
 
     it "parses the an empty section with whitespace" $
       parse "{{#   section }}{{/     section }}" `shouldBe`
-        returnedOne (MustacheSection "section" mempty)
+        returnedOne (MustacheSection ["section"] mempty)
 
     it "parses a delimiter change" $
       parse "{{=<< >>=}}<<var>>{{var}}" `shouldBe`
-        return [MustacheVariable True "var", MustacheText "{{var}}"]
+        return [MustacheVariable True ["var"], MustacheText "{{var}}"]
 
     it "parses a delimiter change with whitespace" $
       parse "{{=<<   >>=}}<< var   >>{{var}}" `shouldBe`
-        return [MustacheVariable True "var", MustacheText "{{var}}"]
+        return [MustacheVariable True ["var"], MustacheText "{{var}}"]
 
     it "parses two subsequent delimiter changes" $
       parse "{{=((  ))=}}(( var ))((=--  $-=))--#section$---/section$-" `shouldBe`
-        return [MustacheVariable True "var", MustacheSection "section" []]
+        return [MustacheVariable True ["var"], MustacheSection ["section"] []]
 
     it "propagates a delimiter change from a nested scope" $
       parse "{{#section}}{{=<< >>=}}<</section>><<var>>" `shouldBe`
-        return [MustacheSection "section" [], MustacheVariable True "var"]
+        return [MustacheSection ["section"] [], MustacheVariable True ["var"]]
 
     it "fails if the tag contains illegal characters" $
       parse "{{#&}}" `shouldSatisfy` isLeft
@@ -94,44 +94,44 @@ substituteSpec =
 
     it "substitutes a html escaped value for a variable" $
       substitute
-        (toTemplate [MustacheVariable True "name"])
+        (toTemplate [MustacheVariable True ["name"]])
         (object ["name" .= ("<tag>" :: T.Text)])
       `shouldBe` return "&lt;tag&gt;"
 
     it "substitutes raw value for an unescaped variable" $
       substitute
-        (toTemplate [MustacheVariable False "name"])
+        (toTemplate [MustacheVariable False ["name"]])
         (object ["name" .= ("<tag>" :: T.Text)])
       `shouldBe` return "<tag>"
 
     it "substitutes a section when the key is present (and an empty object)" $
       substitute
-        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
         (object ["section" .= object []])
       `shouldBe` return "t"
 
     it "substitutes a section when the key is present (and 'true')" $
       substitute
-        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
         (object ["section" .= True])
       `shouldBe` return "t"
 
     it "substitutes a section once when the key is present and a singleton list" $
       substitute
-        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
         (object ["section" .= ["True" :: T.Text]])
       `shouldBe` return "t"
 
     it "substitutes a section twice when the key is present and a list with two items" $
       substitute
-        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
         (object ["section" .= (["True", "False"] :: [T.Text])])
       `shouldBe` return "tt"
 
     it "substitutes a section twice when the key is present and a list with two\
     \ objects, changing the scope to each object" $
       substitute
-        (toTemplate [MustacheSection "section" [MustacheVariable True "t"]])
+        (toTemplate [MustacheSection ["section"] [MustacheVariable True ["t"]]])
         (object
           [ "section" .=
             [ object ["t" .= ("var1" :: T.Text)]
@@ -142,19 +142,19 @@ substituteSpec =
 
     it "does not substitute a section when the key is not present" $
       substitute
-        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
         (object [])
       `shouldBe` return ""
 
     it "does not substitute a section when the key is present (and 'false')" $
       substitute
-        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
         (object ["section" .= False])
       `shouldBe` return ""
 
     it "does not substitute a section when the key is present (and empty list)" $
       substitute
-        (toTemplate [MustacheSection "section" [MustacheText "t"]])
+        (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
         (object ["section" .= ([] :: [T.Text])])
       `shouldBe` return ""
 

@@ -3,8 +3,7 @@ version:             0.1.0.0
 synopsis:            A mustache template parser library.
 description:
   Allows parsing and rendering template files with mustache markup. See the
-  language reference here
-  <http://mustache.github.io/mustache.5.html language reference>.
+  mustache <http://mustache.github.io/mustache.5.html language reference>.
 license:             BSD3
 license-file:        LICENSE
 author:              Justus Adam

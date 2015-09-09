@@ -1,12 +1,32 @@
 {-# LANGUAGE LambdaCase #-}
 module Text.Mustache
-  ( substitute
-  , compileTemplate
-  , compileTemplateWithCache
+  (
+  -- * Compiling
+
+  -- ** Automatic
+    compileTemplate
+
+  -- ** Manually
+  , compileTemplateWithCache, parseTemplate
+
+  -- * Rendering
+
+  -- ** Generic
+
+  , substitute
+
+  -- ** Specialized
+
+  , substituteValue
+
+  -- * Data structures
   , MustacheTemplate(..)
-  , getFile
-  , getPartials
-  , getPartials'
+
+  -- * Util
+
+  -- | These are functions used internally by the parser and renderer. Whether
+  -- these  will continue to be exposed is to be seen.
+  , getFile , getPartials , getPartials', toString, search, Context(..)
   ) where
 
 
@@ -73,15 +93,20 @@ compileTemplateWithCache searchSpace = (runEitherT .) . compile'
         Just template -> return template
         Nothing -> do
           rawSource <- getFile searchSpace name'
-          compiled <- hoistEither $ mustacheParser name' rawSource
+          compiled@(MustacheTemplate { ast = mast }) <-
+            hoistEither $ parseTemplate name' rawSource
 
           foldM
             (\st@(MustacheTemplate { partials = p }) partialName ->
               compile' (p <> templates) partialName >>=
                 \nt -> return (st { partials = nt : p })
             )
-            MustacheTemplate { name = name', ast = compiled, partials = mempty }
-            (getPartials compiled)
+            compiled
+            (getPartials mast)
+
+
+parseTemplate :: String -> Text -> Either ParseError MustacheTemplate
+parseTemplate name' = fmap (flip (MustacheTemplate name') mempty) . mustacheParser name'
 
 
 {-|
@@ -188,13 +213,27 @@ substituteValue (MustacheTemplate { ast = cAst, partials = cPartials }) dataStru
         $ find ((== pName) . name) cPartials
 
 
-search :: Context Value -> T.Text -> Maybe Value
-search (Context parents focus) val =
-  ($ uncons parents >>=
-    flip search val . uncurry (flip Context))
-    (case focus of
-      Object o -> (HM.lookup val o <|>)
-      _ -> id)
+search :: Context Value -> [T.Text] -> Maybe Value
+search _ [] = Nothing
+search (Context parents focus) val@(x:xs) =
+  (
+    ( case focus of
+      (Object o) -> HM.lookup x o
+      _ -> Nothing
+    )
+    <|> (do
+          (newFocus, newParents) <- uncons parents
+          search (Context newParents newFocus) val
+        )
+  )
+    >>= innerSearch xs
+
+
+
+innerSearch :: [T.Text] -> Value -> Maybe Value
+innerSearch [] v = Just v
+innerSearch (y:ys) (Object o) = HM.lookup y o >>= innerSearch ys
+innerSearch _ _ = Nothing
 
 
 toString :: Value -> Text
