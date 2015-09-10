@@ -2,7 +2,6 @@
 module Main where
 
 
-import           Data.Aeson
 import           Data.Either
 import           Data.Monoid          (mempty)
 import qualified Data.Text            as T
@@ -86,6 +85,12 @@ parserSpec =
     it "fails if the tag contains illegal characters" $
       lparse "{{#&}}" `shouldSatisfy` isLeft
 
+    it "parses a nested variable" $
+      lparse "{{ name.val }}" `shouldBe` returnedOne (MustacheVariable True ["name", "val"])
+
+    it "parses a variable containing whitespace" $
+      lparse "{{ val space }}" `shouldBe` returnedOne (MustacheVariable True ["val space"])
+
 
 substituteSpec :: Spec
 substituteSpec =
@@ -158,6 +163,16 @@ substituteSpec =
         (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
         (object ["section" .= ([] :: [T.Text])])
       `shouldBe` return ""
+
+    it "substitutes a nested section" $
+      substitute
+        (toTemplate [MustacheVariable True ["outer", "inner"]])
+        (object
+          [ "outer" .= object ["inner" .= ("success" :: T.Text)]
+          , "inner" .= ("error" :: T.Text)
+          ]
+        )
+        `shouldBe` return "success"
 
 
 main :: IO ()

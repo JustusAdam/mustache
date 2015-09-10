@@ -32,14 +32,14 @@ import           Data.Char
 import           Data.Foldable
 import           Data.Functor
 import           Data.Monoid
-import           Data.Text         as T
-import           Prelude           as Prel
+import           Data.Text           as T
+import           Prelude             as Prel
 import           Text.Mustache.Types
-import           Text.Parsec       as P hiding (parse)
+import           Text.Parsec         as P hiding (parse)
 
 
 data MustacheConf = MustacheConf
-  { delimiters      :: (String, String)
+  { delimiters :: (String, String)
   }
 
 
@@ -89,11 +89,11 @@ parseWithConf = P.runParser (parseText Nothing)
 
 parseText :: Maybe [Text] -> MustacheParser MustacheAST
 parseText
-  name = do
+  tagName = do
     (MustacheConf { delimiters = ( start, _ )}) <- getState
     let endOfText = try (void $ string start) <|> try eof
     content <- pack <$> manyTill anyChar (lookAhead endOfText)
-    others <- parseTag name
+    others <- parseTag tagName
     return $ if T.null content
               then others
               else MustacheText content : others
@@ -101,18 +101,18 @@ parseText
 
 
 parseTag :: Maybe [Text] -> MustacheParser MustacheAST
-parseTag name = choice
-  [ parseEnd name >> return []
+parseTag tagName = choice
+  [ parseEnd tagName >> return []
   , parseSection >>= continue
   , parseInvertedSection >>= continue
   , parseUnescapedVar >>= continue
-  , parseDelimiterChange >> parseText name
+  , parseDelimiterChange >> parseText tagName
   , parsePartial >>= continue
   , parseVariable >>= continue
-  , eof >> maybe (return []) (parserFail . ("Unclosed section " <>) . unpack . fold) name
+  , eof >> maybe (return []) (parserFail . ("Unclosed section " <>) . unpack . fold) tagName
   ]
   where
-    continue val = (val :) <$> parseText name
+    continue val = (val :) <$> parseText tagName
 
 parseSection :: MNodeParser
 parseSection = do
@@ -158,16 +158,16 @@ parseVariable = MustacheVariable True <$> parseNavigation mempty mempty
 
 
 parseEnd :: Maybe [Text] -> MustacheParser ()
-parseEnd name = do
+parseEnd tagName = do
   tag <- parseNavigation sectionEnd mempty
   unless (isSameSection tag) $
     parserFail $
       maybe
         (unexpectedSection tag)
         (`unexpectedClosingSequence` tag)
-        name
+        tagName
   where
-    isSameSection = maybe (const True) (==) name
+    isSameSection = maybe (const True) (==) tagName
 
 
 parseNavigation :: String -> String -> MustacheParser [Text]
@@ -182,7 +182,7 @@ parseNavigation smod emod = do
     parseOne nStart nEnd = do
       spaces
       one <- anyChar `manyTill` lookAhead (try (spaces >> void (string nEnd)) <|> try (void $ char '.'))
-      others <- (char '.' >> parseOne nStart nEnd) <|> (const mempty <$> string nEnd)
+      others <- (char '.' >> parseOne nStart nEnd) <|> (const mempty <$> (spaces >> string nEnd))
       return $ pack one : others
 
 

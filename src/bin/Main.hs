@@ -1,14 +1,17 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns     #-}
 module Main (main) where
 
 
 import           Data.Aeson
+import qualified Data.ByteString                 as B
 import qualified Data.ByteString.Lazy            as BS
 import           Data.Foldable
+import qualified Data.Text.IO                    as TIO
+import qualified Data.Yaml                       as Y
 import           System.Console.CmdArgs.Implicit
+import           System.FilePath
 import           Text.Mustache
-import qualified Data.Text.IO as TIO
 
 
 data Arguments = Arguments
@@ -26,27 +29,41 @@ commandArgs = Arguments
   , dataFiles = def
       &= args
       &= typ "DATA-FILES"
-  , templateDirs = def
-      &= help "The directory in which to search for the templates"
-      &= opt "."
-      &= typ "DIRECTORY"
+  , templateDirs = ["."]
+      &= help "The directories in which to search for the templates"
+      &= typ "DIRECTORIES"
   } &= summary "Simple mustache template subtitution"
+
+
+readJSON :: FilePath -> IO (Either String Value)
+readJSON = fmap eitherDecode . BS.readFile
+
+
+readYAML :: FilePath -> IO (Either String Value)
+readYAML = fmap Y.decodeEither . B.readFile
 
 
 main :: IO ()
 main = do
-  (Arguments { template, templateDirs, dataFiles }) <- cmdArgs commandArgs
+  a@(Arguments { template, templateDirs, dataFiles }) <- cmdArgs commandArgs
 
+  print a
   eitherTemplate <- compileTemplate templateDirs template
 
   case eitherTemplate of
     Left err -> print err
     Right compiledTemplate ->
       for_ dataFiles $ \file -> do
-        f <- BS.readFile file
+
+        let decoder =
+              case takeExtension file of
+                ".yml" -> readYAML
+                ".yaml" -> readYAML
+                _ -> readJSON
+        decoded <- decoder file
 
         either
           putStrLn
           TIO.putStrLn
-          $ (eitherDecode f :: Either String Value) >>=
+          $ decoded >>=
             substitute compiledTemplate . toMustache

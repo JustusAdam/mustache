@@ -30,14 +30,14 @@ substitute t = substituteValue t . toMustache
 {-|
   Same as @substituteValue template . toJSON@
 -}
-substituteValue :: MustacheTemplate -> MustacheData -> Either String Text
+substituteValue :: MustacheTemplate -> MustacheValue -> Either String Text
 substituteValue (MustacheTemplate { ast = cAst, partials = cPartials }) dataStruct =
   joinSubstituted (substitute' (Context mempty dataStruct)) cAst
   where
     joinSubstituted f = fmap fold . traverse f
 
     -- Main substitution function
-    substitute' :: Context MustacheData -> MustacheNode Text -> Either String Text
+    substitute' :: Context MustacheValue -> MustacheNode Text -> Either String Text
 
     -- subtituting text
     substitute' _ (MustacheText t) = return t
@@ -86,7 +86,7 @@ substituteValue (MustacheTemplate { ast = cAst, partials = cPartials }) dataStru
         $ find ((== pName) . name) cPartials
 
 
-search :: Context MustacheData -> [T.Text] -> Maybe MustacheData
+search :: Context MustacheValue -> [T.Text] -> Maybe MustacheValue
 search _ [] = Nothing
 search (Context parents focus) val@(x:xs) =
   (
@@ -103,12 +103,12 @@ search (Context parents focus) val@(x:xs) =
 
 
 
-innerSearch :: [T.Text] -> MustacheData -> Maybe MustacheData
+innerSearch :: [T.Text] -> MustacheValue -> Maybe MustacheValue
 innerSearch [] v = Just v
 innerSearch (y:ys) (Object o) = HM.lookup y o >>= innerSearch ys
 innerSearch _ _ = Nothing
 
 
-toString :: MustacheData -> Text
+toString :: MustacheValue -> Text
 toString (String t) = t
 toString e = pack $ show e
