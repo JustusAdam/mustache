@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NamedFieldPuns     #-}
+{-# LANGUAGE UnicodeSyntax      #-}
 module Main (main) where
 
 
@@ -21,7 +22,7 @@ data Arguments = Arguments
   } deriving (Show, Data, Typeable)
 
 
-commandArgs :: Arguments
+commandArgs ∷ Arguments
 commandArgs = Arguments
   { template = def
       &= argPos 0
@@ -35,32 +36,32 @@ commandArgs = Arguments
   } &= summary "Simple mustache template subtitution"
 
 
-readJSON :: FilePath -> IO (Either String Value)
+readJSON ∷ FilePath → IO (Either String Value)
 readJSON = fmap eitherDecode . BS.readFile
 
 
-readYAML :: FilePath -> IO (Either String Value)
+readYAML ∷ FilePath → IO (Either String Value)
 readYAML = fmap Y.decodeEither . B.readFile
 
 
-main :: IO ()
+main ∷ IO ()
 main = do
   a@(Arguments { template, templateDirs, dataFiles }) <- cmdArgs commandArgs
 
   print a
-  eitherTemplate <- compileTemplate templateDirs template
+  eitherTemplate ← compileTemplate templateDirs template
 
   case eitherTemplate of
-    Left err -> print err
-    Right compiledTemplate ->
-      for_ dataFiles $ \file -> do
+    Left err → print err
+    Right compiledTemplate →
+      for_ dataFiles $ \file → do
 
         let decoder =
               case takeExtension file of
-                ".yml" -> readYAML
-                ".yaml" -> readYAML
-                _ -> readJSON
-        decoded <- decoder file
+                ".yml" → readYAML
+                ".yaml" → readYAML
+                _ → readJSON
+        decoded ← decoder file
 
         either
           putStrLn

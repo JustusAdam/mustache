@@ -18,12 +18,13 @@ module Text.Mustache.Parser
 
   -- ** Components
 
-
+  , genParseTag, parseSection, parseTag, parseVariable, parsePartial, parseText
+  , parseInvertedSection, parseDelimiterChange, parseUnescapedVar, parseEnd
 
   -- * Mustache Constants
 
   , sectionBegin, sectionEnd, invertedSectionBegin, unescape2, unescape1
-  , delimiterChange
+  , delimiterChange, nestingSeparator
 
   ) where
 
@@ -44,34 +45,46 @@ data MustacheConf = MustacheConf
   { delimiters ∷ (String, String)
   }
 
-
+-- | @#@
 sectionBegin ∷ String
 sectionBegin = "#"
+-- | @/@
 sectionEnd ∷ String
 sectionEnd = "/"
+-- | @>@
 partialBegin ∷ String
 partialBegin = ">"
+-- | @^@
 invertedSectionBegin ∷ String
 invertedSectionBegin = "^"
+-- | @{@ and @}@
 unescape2 ∷ (String, String)
 unescape2 = ("{", "}")
+-- | @&@
 unescape1 ∷ String
 unescape1 = "&"
+-- | @=@
 delimiterChange ∷ String
 delimiterChange = "="
+-- | @.@
 nestingSeparator ∷ String
 nestingSeparator = "."
+-- | Cannot be a letter, number or the nesting separation Character @.@
 isAllowedDelimiterCharacter ∷ Char → Bool
-isAllowedDelimiterCharacter = not . Prel.or . sequence [ isSpace, isAlphaNum ]
+isAllowedDelimiterCharacter =
+  not . Prel.or . sequence
+    [ isSpace, isAlphaNum, flip elem nestingSeparator ]
 allowedDelimiterCharacter ∷ MustacheParser Char
 allowedDelimiterCharacter =
   satisfy isAllowedDelimiterCharacter
 
 
+-- | Empty configuration
 emptyConf ∷ MustacheConf
 emptyConf = MustacheConf ("", "")
 
 
+-- | Default configuration (delimiters = ("{{", "}}"))
 defaultConf ∷ MustacheConf
 defaultConf = emptyConf { delimiters = ("{{", "}}") }
 

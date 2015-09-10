@@ -1,5 +1,6 @@
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE UnicodeSyntax     #-}
 module Text.Mustache.Types
   ( MustacheAST
   , MustacheNode(..)
@@ -9,6 +10,7 @@ module Text.Mustache.Types
   , MustacheTemplate(..)
   , object
   , (.=), (.<>)
+  , Context(..)
   ) where
 
 
@@ -16,8 +18,8 @@ import qualified Data.Aeson          as Aeson
 import           Data.HashMap.Strict as HM
 import           Data.Scientific
 import           Data.Text
+import qualified Data.Text.Lazy      as LT
 import qualified Data.Vector         as V
-import qualified Data.Text.Lazy as LT
 
 
 -- Abstract syntax tree for a mustache template
@@ -38,13 +40,15 @@ data MustacheNode a
 type Array = V.Vector MustacheValue
 type Object = HM.HashMap Text MustacheValue
 
+data Context a = Context [a] a
+
 
 data MustacheValue
   = Object Object
   | Array Array
   | Number Scientific
   | String Text
-  | Lambda (Text -> Text)
+  | Lambda (Context MustacheValue → MustacheAST → Either String MustacheAST)
   | Bool Bool
   | Null
 
@@ -59,9 +63,8 @@ instance Show MustacheValue where
   show Null        = "null"
 
 
-
 class ToMustache a where
-  toMustache :: a -> MustacheValue
+  toMustache ∷ a → MustacheValue
 
 
 instance ToMustache Aeson.Value where
@@ -91,17 +94,51 @@ instance ToMustache Scientific where
 instance ToMustache MustacheValue where
   toMustache = id
 
-instance ToMustache m => ToMustache [m] where
+instance ToMustache m ⇒ ToMustache [m] where
   toMustache = Array . V.fromList . fmap toMustache
 
-instance ToMustache m => ToMustache (V.Vector m) where
+instance ToMustache m ⇒ ToMustache (V.Vector m) where
   toMustache = Array . fmap toMustache
 
-instance ToMustache m => ToMustache (HM.HashMap Text m) where
+instance ToMustache m ⇒ ToMustache (HM.HashMap Text m) where
   toMustache = Object . fmap toMustache
 
+instance ToMustache (Context MustacheValue → MustacheAST → Either String MustacheAST) where
+  toMustache = Lambda
 
-fromJson :: Aeson.Value -> MustacheValue
+instance ToMustache (Context MustacheValue → MustacheAST → Either String Text) where
+  toMustache f = Lambda wrapper
+    where wrapper c lAST = return . MustacheText <$> f c lAST
+
+instance ToMustache (Context MustacheValue → MustacheAST → MustacheAST) where
+  toMustache f = Lambda wrapper
+    where wrapper c = Right . f c
+
+instance ToMustache (Context MustacheValue → MustacheAST → Text) where
+  toMustache f = Lambda wrapper
+    where wrapper c = Right . return . MustacheText . f c
+
+instance ToMustache (Context MustacheValue → MustacheAST → String) where
+  toMustache f = toMustache wrapper
+    where wrapper c = pack . f c
+
+instance ToMustache (MustacheAST → Either String MustacheAST) where
+  toMustache f = Lambda $ const f
+
+instance ToMustache (MustacheAST → Either String Text) where
+  toMustache f = Lambda wrapper
+    where wrapper _ = fmap (return . MustacheText) . f
+
+instance ToMustache (MustacheAST → Either String String) where
+  toMustache f = toMustache (fmap pack . f)
+
+instance ToMustache (MustacheAST → Text) where
+  toMustache f = toMustache (Right . f :: MustacheAST -> Either String Text)
+
+instance ToMustache (MustacheAST → String) where
+  toMustache f = toMustache (pack . f)
+
+fromJson ∷ Aeson.Value → MustacheValue
 fromJson (Aeson.Object o) = Object $ fmap fromJson o
 fromJson (Aeson.Array a)  = Array $ fmap fromJson a
 fromJson (Aeson.Number n) = Number n
@@ -110,22 +147,22 @@ fromJson (Aeson.Bool b)   = Bool b
 fromJson (Aeson.Null)     = Null
 
 
-object :: [(Text, MustacheValue)] -> MustacheValue
+object ∷ [(Text, MustacheValue)] → MustacheValue
 object = Object . HM.fromList
 
 
-(.=) :: ToMustache m => Text -> m -> (Text, MustacheValue)
+(.=) ∷ ToMustache m ⇒ Text → m → (Text, MustacheValue)
 (.=) t = (t,) . toMustache
 
 
-(.<>) :: Aeson.ToJSON j => Text -> j -> (Text, MustacheValue)
+(.<>) ∷ Aeson.ToJSON j ⇒ Text → j → (Text, MustacheValue)
 (.<>) t = (t .=) . Aeson.toJSON
 
 
 {-|
   A compiled Template with metadata.
 -}
-data MustacheTemplate = MustacheTemplate { name     :: String
-                                         , ast      :: MustacheAST
-                                         , partials :: [MustacheTemplate]
+data MustacheTemplate = MustacheTemplate { name     ∷ String
+                                         , ast      ∷ MustacheAST
+                                         , partials ∷ [MustacheTemplate]
                                          } deriving (Show)

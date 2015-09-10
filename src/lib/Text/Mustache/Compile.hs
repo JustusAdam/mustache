@@ -1,3 +1,4 @@
+{-# LANGUAGE UnicodeSyntax #-}
 module Text.Mustache.Compile where
 
 
@@ -31,7 +32,7 @@ import           Text.Printf
   A reference to the included template will be found in each including templates
   'partials' section.
 -}
-compileTemplate :: [FilePath] -> FilePath -> IO (Either ParseError MustacheTemplate)
+compileTemplate ∷ [FilePath] → FilePath → IO (Either ParseError MustacheTemplate)
 compileTemplate searchSpace = compileTemplateWithCache searchSpace mempty
 
 
@@ -39,27 +40,27 @@ compileTemplate searchSpace = compileTemplateWithCache searchSpace mempty
   Compile a mustache template providing a list of precompiled templates that do
   not have to be recompiled.
 -}
-compileTemplateWithCache :: [FilePath] -> [MustacheTemplate] -> FilePath -> IO (Either ParseError MustacheTemplate)
+compileTemplateWithCache ∷ [FilePath] → [MustacheTemplate] → FilePath → IO (Either ParseError MustacheTemplate)
 compileTemplateWithCache searchSpace = (runEitherT .) . compile'
   where
     compile' templates name' =
       case find ((== name') . name) templates of
-        Just template -> return template
-        Nothing -> do
-          rawSource <- getFile searchSpace name'
-          compiled@(MustacheTemplate { ast = mast }) <-
+        Just template → return template
+        Nothing → do
+          rawSource ← getFile searchSpace name'
+          compiled@(MustacheTemplate { ast = mast }) ←
             hoistEither $ parseTemplate name' rawSource
 
           foldM
-            (\st@(MustacheTemplate { partials = p }) partialName ->
+            (\st@(MustacheTemplate { partials = p }) partialName →
               compile' (p <> templates) partialName >>=
-                \nt -> return (st { partials = nt : p })
+                \nt → return (st { partials = nt : p })
             )
             compiled
             (getPartials mast)
 
 
-parseTemplate :: String -> Text -> Either ParseError MustacheTemplate
+parseTemplate ∷ String → Text → Either ParseError MustacheTemplate
 parseTemplate name' = fmap (flip (MustacheTemplate name') mempty) . parse name'
 
 
@@ -68,14 +69,14 @@ parseTemplate name' = fmap (flip (MustacheTemplate name') mempty) . parse name'
 
   Same as @join . fmap getPartials'@
 -}
-getPartials :: MustacheAST -> [FilePath]
+getPartials ∷ MustacheAST → [FilePath]
 getPartials = join . fmap getPartials'
 
 
 {-|
   Find partials in a single MustacheNode
 -}
-getPartials' :: MustacheNode Text -> [FilePath]
+getPartials' ∷ MustacheNode Text → [FilePath]
 getPartials' (MustachePartial p) = return p
 getPartials' (MustacheSection _ n) = getPartials n
 getPartials' _ = mempty
@@ -89,7 +90,7 @@ getPartials' _ = mempty
   This trows 'ParseError's to be compatible with the internal Either Monad of
   'compileTemplateWithCache'.
 -}
-getFile :: [FilePath] -> FilePath -> EitherT ParseError IO Text
+getFile ∷ [FilePath] → FilePath → EitherT ParseError IO Text
 getFile [] fp = throwError $ fileNotFound fp
 getFile (templateDir : xs) fp =
   lift (doesFileExist filePath) >>=
@@ -102,5 +103,5 @@ getFile (templateDir : xs) fp =
 
 -- ERRORS
 
-fileNotFound :: FilePath -> ParseError
+fileNotFound ∷ FilePath → ParseError
 fileNotFound fp = newErrorMessage (Message $ printf "Template file '%s' not found" fp) (initialPos fp)
