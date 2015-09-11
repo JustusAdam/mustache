@@ -15,6 +15,7 @@ module Text.Mustache.Types
 
 
 import qualified Data.Aeson          as Aeson
+import           Data.Functor
 import           Data.HashMap.Strict as HM
 import           Data.Scientific
 import           Data.Text
