@@ -3,16 +3,16 @@
 module Text.Mustache.Render where
 
 --
-import           Control.Applicative
-import           Data.Foldable       (fold)
-import           Data.HashMap.Strict as HM hiding (map)
-import           Data.List
-import           Data.Monoid
-import           Data.Text           hiding (concat, find, map, uncons)
-import qualified Data.Text           as T
-import           Data.Traversable    (traverse)
-import qualified Data.Vector         as V
-import           Text.HTML.TagSoup   (escapeHTML)
+import           Control.Applicative    ((<|>))
+import           Data.Foldable          (fold, find)
+import           Data.HashMap.Strict    as HM hiding (map)
+import           Data.Monoid            (mempty, (<>))
+import           Data.Text              hiding (concat, find, map, uncons)
+import qualified Data.Text              as T
+import           Data.Traversable       (traverse)
+import qualified Data.Vector            as V
+import           Text.HTML.TagSoup      (escapeHTML)
+import           Text.Mustache.Internal
 import           Text.Mustache.Types
 import           Text.Printf
 
