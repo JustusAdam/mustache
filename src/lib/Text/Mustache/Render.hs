@@ -3,7 +3,7 @@
 module Text.Mustache.Render where
 
 --
-import           Control.Applicative    ((<|>))
+import           Control.Applicative    ((<|>), (<$>))
 import           Data.Foldable          (fold, find)
 import           Data.HashMap.Strict    as HM hiding (map)
 import           Data.Monoid            (mempty, (<>))
