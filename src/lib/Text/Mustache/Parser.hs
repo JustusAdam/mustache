@@ -30,11 +30,11 @@ module Text.Mustache.Parser
 
 
 import           Control.Monad
-import           Data.Char
-import           Data.Foldable
-import           Data.Functor
+import           Data.Char           (isAlphaNum, isSpace)
+import           Data.Foldable       (fold)
+import           Data.Functor        ((<$>))
 import           Data.List           (nub)
-import           Data.Monoid
+import           Data.Monoid         (mempty, (<>))
 import           Data.Text           as T
 import           Prelude             as Prel
 import           Text.Mustache.Types
