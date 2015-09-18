@@ -101,37 +101,37 @@ substituteSpec =
     it "substitutes a html escaped value for a variable" $
       substitute
         (toTemplate [MustacheVariable True ["name"]])
-        (object ["name" .= ("<tag>" :: T.Text)])
+        (object ["name" ~> ("<tag>" :: T.Text)])
       `shouldBe` return "&lt;tag&gt;"
 
     it "substitutes raw value for an unescaped variable" $
       substitute
         (toTemplate [MustacheVariable False ["name"]])
-        (object ["name" .= ("<tag>" :: T.Text)])
+        (object ["name" ~> ("<tag>" :: T.Text)])
       `shouldBe` return "<tag>"
 
     it "substitutes a section when the key is present (and an empty object)" $
       substitute
         (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
-        (object ["section" .= object []])
+        (object ["section" ~> object []])
       `shouldBe` return "t"
 
     it "substitutes a section when the key is present (and 'true')" $
       substitute
         (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
-        (object ["section" .= True])
+        (object ["section" ~> True])
       `shouldBe` return "t"
 
     it "substitutes a section once when the key is present and a singleton list" $
       substitute
         (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
-        (object ["section" .= ["True" :: T.Text]])
+        (object ["section" ~> ["True" :: T.Text]])
       `shouldBe` return "t"
 
     it "substitutes a section twice when the key is present and a list with two items" $
       substitute
         (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
-        (object ["section" .= (["True", "False"] :: [T.Text])])
+        (object ["section" ~> (["True", "False"] :: [T.Text])])
       `shouldBe` return "tt"
 
     it "substitutes a section twice when the key is present and a list with two\
@@ -139,9 +139,9 @@ substituteSpec =
       substitute
         (toTemplate [MustacheSection ["section"] [MustacheVariable True ["t"]]])
         (object
-          [ "section" .=
-            [ object ["t" .= ("var1" :: T.Text)]
-            , object ["t" .= ("var2" :: T.Text)]
+          [ "section" ~>
+            [ object ["t" ~> ("var1" :: T.Text)]
+            , object ["t" ~> ("var2" :: T.Text)]
             ]
           ])
       `shouldBe` return "var1var2"
@@ -155,21 +155,21 @@ substituteSpec =
     it "does not substitute a section when the key is present (and 'false')" $
       substitute
         (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
-        (object ["section" .= False])
+        (object ["section" ~> False])
       `shouldBe` return ""
 
     it "does not substitute a section when the key is present (and empty list)" $
       substitute
         (toTemplate [MustacheSection ["section"] [MustacheText "t"]])
-        (object ["section" .= ([] :: [T.Text])])
+        (object ["section" ~> ([] :: [T.Text])])
       `shouldBe` return ""
 
     it "substitutes a nested section" $
       substitute
         (toTemplate [MustacheVariable True ["outer", "inner"]])
         (object
-          [ "outer" .= object ["inner" .= ("success" :: T.Text)]
-          , "inner" .= ("error" :: T.Text)
+          [ "outer" ~> object ["inner" ~> ("success" :: T.Text)]
+          , "inner" ~> ("error" :: T.Text)
           ]
         )
         `shouldBe` return "success"
