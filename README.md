@@ -1,6 +1,6 @@
 # mustache [![Travis Status](https://travis-ci.org/JustusAdam/mustache.svg?branch=master)](https://travis-ci.org/JustusAdam/mustache)
 
-Haskell implementation of [mustache templates][mustache-homepage] based on instances of the ToJSON typeclass.
+Haskell implementation of [mustache templates][mustache-homepage].
 
 [mustache-homepage]: https://mustache.github.io
 
@@ -21,7 +21,7 @@ Since it is so easy to use and requires but a few files of code, I've also writt
 ### Executable `haskell-mustache`
 
     $ haskell-mustache --help
-    Simple mustache template subtitution
+    Simple mustache template substitution
 
     arguments [OPTIONS] TEMPLATE [DATA-FILES]
 
@@ -40,6 +40,7 @@ Currenty substitutes the `TEMPLATE` once with each `DATA-FILE`
 - [x] Standalone executable
 - [x] Support for 'set delimiter'
 - [x] More efficiency using `Text` rather than `String`
-- [ ] More efficient Text parsing using source positions
-- [ ] Full unittest coverage
-- [ ] Haddock documentation
+- [x] More efficient Text parsing
+- [ ] Full unittest coverage (partially done)
+- [x] Haddock documentation
+- [ ] More instances for `ToMustache` typeclass

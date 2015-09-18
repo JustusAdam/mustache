@@ -1,3 +1,12 @@
+{-|
+Module      : $Header$
+Description : Functions for parsing mustache templates
+Copyright   : (c) Justus Adam, 2015
+License     : LGPL-3
+Maintainer  : development@justusadam.com
+Stability   : experimental
+Portability : POSIX
+-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}

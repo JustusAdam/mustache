@@ -1,3 +1,12 @@
+{-|
+Module      : $Header$
+Description : Basic functions for dealing with mustache templates.
+Copyright   : (c) Justus Adam, 2015
+License     : LGPL-3
+Maintainer  : development@justusadam.com
+Stability   : experimental
+Portability : POSIX
+-}
 {-# LANGUAGE LambdaCase #-}
 module Text.Mustache
   (
@@ -7,7 +16,7 @@ module Text.Mustache
     compileTemplate
 
   -- ** Manually
-  , compileTemplateWithCache, parseTemplate
+  , compileTemplateWithCache, parseTemplate, MustacheTemplate(..)
 
   -- * Rendering
 
@@ -19,8 +28,8 @@ module Text.Mustache
 
   , substituteValue
 
-  -- * Data structures
-  , MustacheTemplate(..), ToMustache, toMustache
+  -- ** Data Conversion
+  , ToMustache, toMustache, object, (~>), (~=), (~~>), (~~=)
 
   -- * Util
 

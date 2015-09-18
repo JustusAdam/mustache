@@ -1,6 +1,23 @@
+{-|
+Module      : $Header$
+Description : Functions for rendering mustache templates.
+Copyright   : (c) Justus Adam, 2015
+License     : LGPL-3
+Maintainer  : development@justusadam.com
+Stability   : experimental
+Portability : POSIX
+-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax     #-}
-module Text.Mustache.Render where
+module Text.Mustache.Render
+  (
+  -- * Substitution
+    substitute, substituteValue
+  -- * Working with Context
+  , Context(..), search, innerSearch
+  -- * Util
+  , toString
+  ) where
 
 --
 import           Control.Applicative    ((<|>), (<$>))
@@ -20,22 +37,25 @@ import           Text.Printf
 {-|
   Substitutes all mustache defined tokens (or tags) for values found in the
   provided data structure.
+
+  Equivalent to @substituteValue . toMustache@.
 -}
 substitute ∷ ToMustache j ⇒ MustacheTemplate → j → Either String Text
 substitute t = substituteValue t . toMustache
 
 
 {-|
-  Same as @substituteValue template . toJSON@
+  Substitutes all mustache defined tokens (or tags) for values found in the
+  provided data structure.
 -}
-substituteValue ∷ MustacheTemplate → MustacheValue → Either String Text
+substituteValue ∷ MustacheTemplate → Value → Either String Text
 substituteValue (MustacheTemplate { ast = cAst, partials = cPartials }) dataStruct =
   joinSubstituted (substitute' (Context mempty dataStruct)) cAst
   where
     joinSubstituted f = fmap fold . traverse f
 
     -- Main substitution function
-    substitute' ∷ Context MustacheValue → MustacheNode Text → Either String Text
+    substitute' ∷ Context Value → MustacheNode Text → Either String Text
 
     -- subtituting text
     substitute' _ (MustacheText t) = return t
@@ -85,7 +105,7 @@ substituteValue (MustacheTemplate { ast = cAst, partials = cPartials }) dataStru
         $ find ((== pName) . name) cPartials
 
 
-search ∷ Context MustacheValue → [T.Text] → Maybe MustacheValue
+search ∷ Context Value → [T.Text] → Maybe Value
 search _ [] = Nothing
 search (Context parents focus) val@(x:xs) =
   (
@@ -102,12 +122,12 @@ search (Context parents focus) val@(x:xs) =
 
 
 
-innerSearch ∷ [T.Text] → MustacheValue → Maybe MustacheValue
+innerSearch ∷ [T.Text] → Value → Maybe Value
 innerSearch [] v = Just v
 innerSearch (y:ys) (Object o) = HM.lookup y o >>= innerSearch ys
 innerSearch _ _ = Nothing
 
 
-toString ∷ MustacheValue → Text
+toString ∷ Value → Text
 toString (String t) = t
 toString e = pack $ show e
