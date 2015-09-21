@@ -6,15 +6,17 @@ description:
   mustache <http://mustache.github.io/mustache.5.html language reference>.
 license:             BSD3
 license-file:        LICENSE
-author:              Justus Adam
-maintainer:          dev@justus.science
+author:              Justus Adam <dev@justus.science>
+maintainer:          Justus Adam <dev@justus.science>
+homepage:            https://github.com/JustusAdam/mustache
+bug-reports:         https://github.com/JustusAdam/mustache/issues
 -- copyright:
-category:            Development
+category:            Development, Text
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 tested-with:         GHC >=7.8 && <= 7.10.2
-homepage:            http://justus.science/projects/mustache.html
+
 
 
 source-repository head
