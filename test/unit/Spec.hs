@@ -243,8 +243,8 @@ testOfficialLangSpec dir = do
       Nothing -> describe ("File: " <> takeFileName filename) $
         it "loads the data file" $
           expectationFailure "Data file could not be parsed"
-      Just (LangSpecFile { overview, tests }) →
-        describe ("File: " <> takeFileName filename <> "\n" <> overview) $
+      Just (LangSpecFile { tests }) →
+        describe ("File: " <> takeFileName filename) $
           for_ tests $ \(LangSpecTest { .. }) →
             it ("Name: " <> name <> "  Description: " <> specDescription) $
               case parseTemplate name template of
