@@ -1,14 +1,63 @@
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE UnicodeSyntax     #-}
 module Main where
 
 
+import           Control.Monad
 import           Data.Either
-import           Data.Monoid          (mempty)
+import           Data.Foldable
+import           Data.Monoid          (mempty, (<>))
 import qualified Data.Text            as T
+import           Data.Yaml            as Y (FromJSON, Value (..), decodeFile,
+                                            parseJSON, (.:))
+import           System.Directory
+import           System.FilePath
+import           System.IO.Temp
+import           System.Process
 import           Test.Hspec
 import           Text.Mustache
-import           Text.Mustache.Types
 import           Text.Mustache.Parser
+import           Text.Mustache.Types
+import Data.List
+
+
+langspecDir = "langSpecTests"
+specDir = "specs"
+
+
+data LangSpecFile = LangSpecFile
+  { overview :: String
+  , tests    :: [LangSpecTest]
+  }
+
+
+data LangSpecTest = LangSpecTest
+  { name            :: String
+  , specDescription :: String
+  , specData        :: Y.Value
+  , template        :: T.Text
+  , expected        :: T.Text
+  }
+
+
+instance FromJSON LangSpecFile where
+  parseJSON (Y.Object o) = LangSpecFile
+    <$> o .: "overview"
+    <*> o .: "tests"
+  parseJSON _ = mzero
+
+
+instance FromJSON LangSpecTest where
+  parseJSON (Y.Object o) = LangSpecTest
+    <$> o .: "name"
+    <*> o .: "desc"
+    <*> o .: "data"
+    <*> o .: "template"
+    <*> o .: "expected"
+  parseJSON _ = mzero
 
 
 parserSpec :: Spec
@@ -175,7 +224,45 @@ substituteSpec =
         `shouldBe` return "success"
 
 
+getOfficialGitRepo ∷ FilePath → IO ()
+getOfficialGitRepo tempdir = do
+  currentDirectory ← getCurrentDirectory
+  setCurrentDirectory tempdir
+  callProcess "git" ["clone", "https://github.com/mustache/spec.git", langspecDir]
+  setCurrentDirectory currentDirectory
+
+
+testOfficialLangSpec ∷ FilePath → Spec
+testOfficialLangSpec dir = do
+  allFiles ← runIO $ getDirectoryContents dir
+  let testfiles' = filter ((`elem` [".yml", ".yaml"]) . takeExtension) allFiles
+      -- Filters the lambda tests for now.
+      testfiles = filter (not . ("~" `isPrefixOf`) . takeFileName) testfiles'
+  for_ testfiles $ \filename →
+    runIO (decodeFile (dir </> filename)) >>= \case
+      Nothing -> describe ("File: " <> takeFileName filename) $
+        it "loads the data file" $
+          expectationFailure "Data file could not be parsed"
+      Just (LangSpecFile { overview, tests }) →
+        describe ("File: " <> takeFileName filename <> "\n" <> overview) $
+          for_ tests $ \(LangSpecTest { .. }) →
+            it ("Name: " <> name <> "  Description: " <> specDescription) $
+              case parseTemplate name template of
+                Left m → expectationFailure $ show m
+                Right tmp →
+                  case substituteValue tmp $ toMustache specData of
+                    Left m → expectationFailure m
+                    Right t → t `shouldBe` expected
+
+
 main :: IO ()
-main = hspec $ do
-  parserSpec
-  substituteSpec
+main =
+  void $
+    withSystemTempDirectory
+      "mustache-test-resources"
+      $ \tempdir → do
+        getOfficialGitRepo tempdir
+        hspec $ do
+          parserSpec
+          substituteSpec
+          testOfficialLangSpec (tempdir </> langspecDir </> specDir)
