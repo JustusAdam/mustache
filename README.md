@@ -1,4 +1,4 @@
-# mustache [![Travis Status](https://travis-ci.org/JustusAdam/mustache.svg?branch=master)](https://travis-ci.org/JustusAdam/mustache)
+# mustache [![Travis Status](https://travis-ci.org/JustusAdam/mustache.svg?branch=master)](https://travis-ci.org/JustusAdam/mustache) [![Hackage](https://img.shields.io/hackage/v/mustache.svg)](https://hackage.haskell.org/package/mustache)
 
 Haskell implementation of [mustache templates][mustache-homepage].
 
@@ -6,7 +6,7 @@ Haskell implementation of [mustache templates][mustache-homepage].
 
 ## Motivation
 
-The old Haskell implementation of mustache tempates [hastache][] seemed pretty abandoned to me. This implementation aims to be much easier to use and (fingers crossed) better maintained.
+The old Haskell implementation of mustache templates [hastache][] seemed pretty abandoned to me. This implementation aims to be much easier to use and (fingers crossed) better maintained.
 
 [hastache]: https://hackage.haskell.org/package/hastache
 

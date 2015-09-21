@@ -14,6 +14,7 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 tested-with:         GHC >=7.8 && <= 7.10.2
+homepage:            http://justus.science/projects/mustache.html
 
 
 source-repository head
@@ -42,7 +43,6 @@ library
                        mtl >=2.2 && <2.3,
                        either,
                        aeson,
-                       uniplate,
                        unordered-containers,
                        vector,
                        tagsoup,
@@ -82,6 +82,5 @@ test-suite unit-tests
                       hspec,
                       text,
                       mustache,
-                      aeson
   hs-source-dirs:     test/unit
   default-language:   Haskell2010
