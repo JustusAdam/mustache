@@ -26,6 +26,8 @@ import Data.List
 
 langspecDir = "langSpecTests"
 specDir = "specs"
+releaseFile = "v1.1.3.tar.gz"
+releaseURL = "http://github.com/mustache/spec/archive/" <> releaseFile
 
 
 data LangSpecFile = LangSpecFile
@@ -228,7 +230,8 @@ getOfficialGitRepo ∷ FilePath → IO ()
 getOfficialGitRepo tempdir = do
   currentDirectory ← getCurrentDirectory
   setCurrentDirectory tempdir
-  callProcess "git" ["clone", "https://github.com/mustache/spec.git", langspecDir]
+  callProcess "curl" [releaseURL]
+  callProcess "tar" ["-xf", releaseFile, "-o", langspecDir]
   setCurrentDirectory currentDirectory
 
 
