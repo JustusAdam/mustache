@@ -40,7 +40,7 @@ import           Data.Functor        ((<$>))
 import           Data.List           (nub)
 import           Data.Maybe          (fromMaybe)
 import           Data.Monoid         (mempty, (<>))
-import           Data.Text           as T
+import           Data.Text           as T (Text, pack, null, intercalate, unpack)
 import           Prelude             as Prel
 import           Text.Mustache.Types
 import           Text.Parsec         as P hiding (parse)
@@ -88,6 +88,8 @@ delimiterChange = '='
 -- | @.@
 nestingSeparator ∷ Char
 nestingSeparator = '.'
+comment ∷ Char
+comment = '!'
 -- | Cannot be a letter, number or the nesting separation Character @.@
 isAllowedDelimiterCharacter ∷ Char → Bool
 isAllowedDelimiterCharacter =
@@ -115,6 +117,7 @@ initState (MustacheConf { delimiters }) = emptyState { sDelimiters = delimiters 
 type MustacheParser = Parsec Text MustacheState
 
 
+(<<) ∷ Monad m ⇒ m b → m a → m b
 (<<) = flip (>>)
 
 
@@ -150,7 +153,7 @@ appendTextStack t = modifyState (\s → s { textStack = textStack s <> convert t
 continueLine ∷ MustacheParser MustacheAST
 continueLine = do
   (MustacheState { sDelimiters = ( start, _ )}) ← getState
-  let forbidden = nub (start <> "\n\r")
+  let forbidden = head start : "\n\r"
 
   many (noneOf forbidden) >>= appendTextStack
 
@@ -183,10 +186,16 @@ parseLine = do
   initialWhitespace ← many (oneOf " \t")
   let handleStandalone = do
         tag ← switchOnTag
-        endingWhitespace ← many (oneOf " \t")
-        (try customEndOfLine >> continueFromTag tag)
-          <|> (try eof >> continueFromTag tag)
-          <|> (appendTextStack (initialWhitespace <> endingWhitespace) >> continueFromTag tag)
+        let continueNoStandalone = appendTextStack initialWhitespace >> continueFromTag tag
+        case tag of
+          Tag _ → continueNoStandalone
+          _ →
+            ( do
+              try (skipMany (oneOf " \t"))
+              try eof <|> void (try customEndOfLine)
+              continueFromTag tag
+            )
+              <|> continueNoStandalone
   (try (string start) >> handleStandalone)
     <|> (try eof >> appendTextStack initialWhitespace >> finishFile)
     <|> (appendTextStack initialWhitespace >> continueLine)
@@ -194,10 +203,10 @@ parseLine = do
 
 continueFromTag ∷ ParseTagRes → MustacheParser MustacheAST
 continueFromTag (SectionBegin inverted name) = do
-  s@(MustacheState
-    { currentSectionName = previousSection }) ← getState
   textNodes ← flushText
-  putState $ s { currentSectionName = Just name }
+  state@(MustacheState
+    { currentSectionName = previousSection }) ← getState
+  putState $ state { currentSectionName = Just name }
   innerSectionContent ← parseText
   let sectionTag =
         if inverted
@@ -211,10 +220,10 @@ continueFromTag (SectionEnd name) = do
     { currentSectionName }) ← getState
   case currentSectionName of
     Just cName | name == cName → flushText
-    Just _ → parserFail $ wrongClosingSequence (fromMaybe ["<root>"] currentSectionName) name
+    Just _  → parserFail $ wrongClosingSequence (fromMaybe ["<root>"] currentSectionName) name
     Nothing → parserFail $ unexpectedClosingSequence name
 continueFromTag (Tag tag) = do
-  textNodes ← flushText
+  textNodes    ← flushText
   furtherNodes ← parseText
   return $ textNodes <> return tag <> furtherNodes
 continueFromTag HandledTag = continueLine
@@ -239,6 +248,7 @@ switchOnTag = do
         << (try (char delimiterChange) >> parseDelimChange)
     , SectionBegin True
         <$> (try (char invertedSectionBegin) >> genParseTagEnd mempty)
+    , return HandledTag << (try (char comment) >> manyTill anyChar (try $ string end))
     , Tag . MustacheVariable True
         <$> genParseTagEnd mempty
     ]
@@ -249,6 +259,8 @@ switchOnTag = do
       delim1 ← allowedDelimiterCharacter `manyTill` space
       spaces
       delim2 ← allowedDelimiterCharacter `manyTill` try (spaces >> string (delimiterChange : end))
+      when (delim1 == mempty || delim2 == mempty)
+        $ parserFail "Tags must contain more than 0 characters"
       oldState ← getState
       putState $ oldState { sDelimiters = (delim1, delim2) }
 
