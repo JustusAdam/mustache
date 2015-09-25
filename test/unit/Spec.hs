@@ -12,7 +12,7 @@ import           Data.Foldable
 import           Data.Monoid          (mempty, (<>))
 import qualified Data.Text            as T
 import           Data.Yaml            as Y (FromJSON, Value (..), decodeFile,
-                                            parseJSON, (.:))
+                                            parseJSON, (.:), (.:?), (.!=))
 import           System.Directory
 import           System.FilePath
 import           System.IO.Temp
@@ -22,6 +22,7 @@ import           Text.Mustache
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
 import Data.List
+import qualified Data.HashMap.Strict as HM (HashMap, lookup, traverseWithKey, elems, empty)
 
 
 langspecDir = "spec-1.1.3"
@@ -42,6 +43,7 @@ data LangSpecTest = LangSpecTest
   , specData        :: Y.Value
   , template        :: T.Text
   , expected        :: T.Text
+  , testPartials    :: HM.HashMap String T.Text
   }
 
 
@@ -59,6 +61,7 @@ instance FromJSON LangSpecTest where
     <*> o .: "data"
     <*> o .: "template"
     <*> o .: "expected"
+    <*> o .:? "partials" .!= HM.empty
   parseJSON _ = mzero
 
 
@@ -252,12 +255,18 @@ testOfficialLangSpec dir = do
         describe ("File: " <> takeFileName filename) $
           for_ tests $ \(LangSpecTest { .. }) →
             it ("Name: " <> name <> "  Description: " <> specDescription) $
-              case parseTemplate name template of
-                Left m → expectationFailure $ show m
-                Right tmp →
-                  case substituteValue tmp $ toMustache specData of
-                    Left m → expectationFailure m
-                    Right t → t `shouldBe` expected
+              let
+                compiled = do
+                  partials' <- HM.elems <$> HM.traverseWithKey parseTemplate testPartials
+                  template'  <- parseTemplate name template
+                  return $ template' { partials = partials' }
+              in
+                case compiled of
+                  Left m → expectationFailure $ show m
+                  Right tmp →
+                    case substituteValue tmp $ toMustache specData of
+                      Left m → expectationFailure m
+                      Right t → t `shouldBe` expected
 
 
 main :: IO ()

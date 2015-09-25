@@ -4,30 +4,29 @@ synopsis:            A mustache template parser library.
 description:
   Allows parsing and rendering template files with mustache markup. See the
   mustache <http://mustache.github.io/mustache.5.html language reference>.
+
+  Implements the mustache spec version 1.1.3
 license:             BSD3
 license-file:        LICENSE
-author:              Justus Adam <dev@justus.science>
-maintainer:          Justus Adam <dev@justus.science>
-homepage:            https://github.com/JustusAdam/mustache
-bug-reports:         https://github.com/JustusAdam/mustache/issues
+author:              Justus Adam
+maintainer:          dev@justus.science
 -- copyright:
-category:            Development, Text
+category:            Development
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 tested-with:         GHC >=7.8 && <= 7.10.2
 
 
-
 source-repository head
   type:     git
   location: git://github.com/JustusAdam/mustache.git
-
-source-repository this
-  type:     git
-  branch:   master
-  location: git://github.com/JustusAdam/mustache.git
-  tag:      0.1.0.0
+--
+-- source-repository this
+--   type:     git
+--   branch:   master
+--   location: git://github.com/JustusAdam/mustache.git
+--   tag:
 
 
 
@@ -45,6 +44,7 @@ library
                        mtl >=2.2 && <2.3,
                        either,
                        aeson,
+                       uniplate,
                        unordered-containers,
                        vector,
                        tagsoup,
@@ -84,10 +84,12 @@ test-suite unit-tests
                       hspec,
                       text,
                       mustache,
-                      process,
+                      aeson,
+                      unordered-containers,
+                      yaml,
                       filepath,
-                      directory,
+                      process,
                       temporary,
-                      yaml
+                      directory
   hs-source-dirs:     test/unit
   default-language:   Haskell2010
