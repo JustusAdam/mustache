@@ -32,6 +32,7 @@ import           Text.HTML.TagSoup      (escapeHTML)
 import           Text.Mustache.Internal
 import           Text.Mustache.Types
 import           Text.Printf
+import Data.Scientific (floatingOrInteger)
 
 
 {-|
@@ -100,9 +101,10 @@ substituteValue (MustacheTemplate { ast = cAst, partials = cPartials }) dataStru
     -- substituting a partial
     substitute' context (MustachePartial pName) =
       maybe
-        (Left $ printf "Could not find partial '%s'" pName)
+        (return "")
         (joinSubstituted (substitute' context) . ast)
         $ find ((== pName) . name) cPartials
+    substitute' (Context _ val) MustacheImplicitIterator = return $ toString val
 
 
 search ∷ Context Value → [T.Text] → Maybe Value
@@ -130,4 +132,5 @@ innerSearch _ _ = Nothing
 
 toString ∷ Value → Text
 toString (String t) = t
+toString (Number n) = either (pack . show) (pack . show) (floatingOrInteger n ∷ Either Double Integer)
 toString e = pack $ show e

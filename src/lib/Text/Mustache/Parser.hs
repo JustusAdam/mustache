@@ -88,8 +88,12 @@ delimiterChange = '='
 -- | @.@
 nestingSeparator ∷ Char
 nestingSeparator = '.'
+-- | @!@
 comment ∷ Char
 comment = '!'
+-- | @.@
+implicitIterator ∷ Char
+implicitIterator = '.'
 -- | Cannot be a letter, number or the nesting separation Character @.@
 isAllowedDelimiterCharacter ∷ Char → Bool
 isAllowedDelimiterCharacter =
@@ -231,7 +235,7 @@ continueFromTag HandledTag = continueLine
 
 switchOnTag ∷ MustacheParser ParseTagRes
 switchOnTag = do
-  (MustacheState { sDelimiters = ( start, end )}) ← getState
+  (MustacheState { sDelimiters = ( _, end )}) ← getState
 
   choice
     [ SectionBegin False
@@ -243,14 +247,15 @@ switchOnTag = do
     , Tag . MustacheVariable False
         <$> (try (char (fst unescape2)) >> genParseTagEnd (return $ snd unescape2))
     , Tag . MustachePartial
-        <$> (try (char partialBegin) >> spaces >> (noneOf (nub $ start <> end) `manyTill` (spaces >> string end)))
+        <$> (try (char partialBegin) >> spaces >> (noneOf (nub end) `manyTill` try (spaces >> string end)))
     , return HandledTag
         << (try (char delimiterChange) >> parseDelimChange)
     , SectionBegin True
         <$> (try (char invertedSectionBegin) >> genParseTagEnd mempty)
     , return HandledTag << (try (char comment) >> manyTill anyChar (try $ string end))
-    , Tag . MustacheVariable True
-        <$> genParseTagEnd mempty
+    , spaces >>
+        ((try (char implicitIterator) >> spaces >> return (Tag MustacheImplicitIterator))
+          <|> (Tag . MustacheVariable True <$> genParseTagEnd mempty))
     ]
   where
     parseDelimChange = do

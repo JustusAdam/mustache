@@ -51,6 +51,7 @@ data MustacheNode a
   | MustacheInvertedSection [Text] MustacheAST
   | MustacheVariable Bool [Text]
   | MustachePartial FilePath
+  | MustacheImplicitIterator
   deriving (Show, Eq)
 
 
