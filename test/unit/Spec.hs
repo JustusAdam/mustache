@@ -24,10 +24,10 @@ import           Text.Mustache.Types
 import Data.List
 
 
-langspecDir = "langSpecTests"
+langspecDir = "spec-1.1.3"
 specDir = "specs"
-releaseFile = "v1.1.3.tar.gz"
-releaseURL = "http://github.com/mustache/spec/archive/" <> releaseFile
+releaseFile = "langspec.tar.gz"
+releaseURL = "https://codeload.github.com/mustache/spec/tar.gz/v1.1.3"
 
 
 data LangSpecFile = LangSpecFile
@@ -226,12 +226,14 @@ substituteSpec =
         `shouldBe` return "success"
 
 
-getOfficialGitRepo ∷ FilePath → IO ()
-getOfficialGitRepo tempdir = do
+getOfficialSpecRelease ∷ FilePath → IO ()
+getOfficialSpecRelease tempdir = do
   currentDirectory ← getCurrentDirectory
   setCurrentDirectory tempdir
-  callProcess "curl" [releaseURL]
-  callProcess "tar" ["-xf", releaseFile, "-o", langspecDir]
+  createDirectory langspecDir
+  callProcess "curl" [releaseURL, "-o", releaseFile]
+  callProcess "tar" ["-xf", releaseFile]
+  getDirectoryContents "." >>= print
   setCurrentDirectory currentDirectory
 
 
@@ -264,7 +266,7 @@ main =
     withSystemTempDirectory
       "mustache-test-resources"
       $ \tempdir → do
-        getOfficialGitRepo tempdir
+        getOfficialSpecRelease tempdir
         hspec $ do
           parserSpec
           substituteSpec
