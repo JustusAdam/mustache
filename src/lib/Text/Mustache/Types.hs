@@ -14,15 +14,16 @@ Portability : POSIX
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
-    MustacheAST
+    AST
   , MustacheTemplate(..)
-  , MustacheNode(..)
+  , Node(..)
+  , DataIdentifier(..)
   -- * Types for the Substitution / Data
   , Value(..)
   -- ** Converting
   , object
   , (~>), (~=), (~~>), (~~=)
-  , ToMustache, toMustache, toMustacheText, mFromJSON
+  , ToMustache, toMustache, toTextBlock, mFromJSON
   -- ** Representation
   , Array, Object
   , Context(..)
@@ -37,27 +38,32 @@ import           Data.Text
 import qualified Data.Text.Lazy      as LT
 import qualified Data.Vector         as V
 import           Conversion
-import           Conversion.Text ()
+import           Conversion.Text     ()
 
 
 -- | Abstract syntax tree for a mustache template
-type MustacheAST = [MustacheNode Text]
+type AST = [Node Text]
 
 
 -- | Basic values composing the AST
-data MustacheNode a
-  = MustacheText a
-  | MustacheSection [Text] MustacheAST
-  | MustacheInvertedSection [Text] MustacheAST
-  | MustacheVariable Bool [Text]
-  | MustachePartial FilePath
-  | MustacheImplicitIterator
+data Node a
+  = TextBlock a
+  | Section DataIdentifier AST
+  | InvertedSection DataIdentifier AST
+  | Variable Bool DataIdentifier
+  | Partial FilePath
+  deriving (Show, Eq)
+
+
+data DataIdentifier
+  = NamedData [Text]
+  | Implicit
   deriving (Show, Eq)
 
 
 type Array = V.Vector Value
 type Object = HM.HashMap Text Value
-type KeyValuePair = (Text, Value)
+type Pair = (Text, Value)
 
 
 -- | Representation of stateful context for the substitution process
@@ -70,13 +76,13 @@ data Value
   | Array Array
   | Number Scientific
   | String Text
-  | Lambda (Context Value → MustacheAST → Either String MustacheAST)
+  | Lambda (Context Value → AST → AST)
   | Bool Bool
   | Null
 
 
 instance Show Value where
-  show (Lambda _)  = "Lambda Context Value → MustacheAST → Either String MustacheAST"
+  show (Lambda _)  = "Lambda Context Value → AST → Either String AST"
   show (Object o)  = show o
   show (Array a)   = show a
   show (String s)  = show s
@@ -123,39 +129,25 @@ instance ToMustache m ⇒ ToMustache (V.Vector m) where
 instance ToMustache m ⇒ ToMustache (HM.HashMap Text m) where
   toMustache = Object . fmap toMustache
 
-instance ToMustache (Context Value → MustacheAST → Either String MustacheAST) where
+instance ToMustache (Context Value → AST → AST) where
   toMustache = Lambda
 
-instance ToMustache (Context Value → MustacheAST → Either String Text) where
+instance ToMustache (Context Value → AST → Text) where
   toMustache f = Lambda wrapper
-    where wrapper c lAST = return . MustacheText <$> f c lAST
+    where wrapper c lAST = return . TextBlock $ f c lAST
 
-instance ToMustache (Context Value → MustacheAST → MustacheAST) where
-  toMustache f = Lambda wrapper
-    where wrapper c = Right . f c
-
-instance ToMustache (Context Value → MustacheAST → Text) where
-  toMustache f = Lambda wrapper
-    where wrapper c = Right . return . MustacheText . f c
-
-instance ToMustache (Context Value → MustacheAST → String) where
+instance ToMustache (Context Value → AST → String) where
   toMustache f = toMustache wrapper
     where wrapper c = pack . f c
 
-instance ToMustache (MustacheAST → Either String MustacheAST) where
+instance ToMustache (AST → AST) where
   toMustache f = Lambda $ const f
 
-instance ToMustache (MustacheAST → Either String Text) where
+instance ToMustache (AST → Text) where
   toMustache f = Lambda wrapper
-    where wrapper _ = fmap (return . MustacheText) . f
+    where wrapper _ = (return . TextBlock) . f
 
-instance ToMustache (MustacheAST → Either String String) where
-  toMustache f = toMustache (fmap pack . f)
-
-instance ToMustache (MustacheAST → Text) where
-  toMustache f = toMustache (Right . f ∷ MustacheAST -> Either String Text)
-
-instance ToMustache (MustacheAST → String) where
+instance ToMustache (AST → String) where
   toMustache f = toMustache (pack . f)
 
 instance ToMustache Aeson.Value where
@@ -198,30 +190,30 @@ object = Object . HM.fromList
 -- | Map keys to values that provide a 'ToMustache' instance
 --
 -- Recommended in conjunction with the `OverloadedStrings` extension.
-(~>) ∷ ToMustache m ⇒ Text → m → KeyValuePair
+(~>) ∷ ToMustache m ⇒ Text → m → Pair
 (~>) t = (t, ) . toMustache
 
 
 -- | Map keys to values that provide a 'ToJSON' instance
 --
 -- Recommended in conjunction with the `OverloadedStrings` extension.
-(~=) ∷ Aeson.ToJSON j ⇒ Text → j → KeyValuePair
+(~=) ∷ Aeson.ToJSON j ⇒ Text → j → Pair
 (~=) t = (t ~>) . Aeson.toJSON
 
 
 -- | Conceptually similar to '~>' but uses arbitrary String-likes as keys.
-(~~>) ∷ (Conversion t Text, ToMustache m) ⇒ t → m → KeyValuePair
+(~~>) ∷ (Conversion t Text, ToMustache m) ⇒ t → m → Pair
 (~~>) = (~>) . convert
 
 
 -- | Conceptually similar to '~=' but uses arbitrary String-likes as keys.
-(~~=) ∷ (Conversion t Text, Aeson.ToJSON j) ⇒ t → j → KeyValuePair
+(~~=) ∷ (Conversion t Text, Aeson.ToJSON j) ⇒ t → j → Pair
 (~~=) = (~=) . convert
 
 
 -- | Converts arbitrary String-likes to Values
-toMustacheText ∷ Conversion t Text ⇒ t → Value
-toMustacheText = String . convert
+toTextBlock ∷ Conversion t Text ⇒ t → Value
+toTextBlock = String . convert
 
 
 -- | Converts a value that can be represented as JSON to a Value.
@@ -233,6 +225,6 @@ mFromJSON = toMustache . Aeson.toJSON
   A compiled Template with metadata.
 -}
 data MustacheTemplate = MustacheTemplate { name     ∷ String
-                                         , ast      ∷ MustacheAST
-                                         , partials ∷ [MustacheTemplate]
+                                         , ast      ∷ AST
+                                         , partials ∷ HashMap String MustacheTemplate
                                          } deriving (Show)
