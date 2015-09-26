@@ -4,21 +4,25 @@
 module Main (main) where
 
 
-import           Data.Aeson
-import qualified Data.ByteString                 as B
-import qualified Data.ByteString.Lazy            as BS
-import           Data.Foldable
-import qualified Data.Text.IO                    as TIO
-import qualified Data.Yaml                       as Y
-import           System.Console.CmdArgs.Implicit
-import           System.FilePath
-import           Text.Mustache
+import           Data.Aeson                      (Value, eitherDecode)
+import qualified Data.ByteString                 as B (readFile)
+import qualified Data.ByteString.Lazy            as BS (readFile)
+import           Data.Foldable                   (for_)
+import qualified Data.Text.IO                    as TIO (putStrLn)
+import           Data.Yaml                       (decodeEither)
+import           Prelude.Unicode
+import           System.Console.CmdArgs.Implicit (Data, Typeable, argPos, args,
+                                                  cmdArgs, def, help, summary,
+                                                  typ, (&=))
+import           System.FilePath                 (takeExtension)
+import           Text.Mustache                   (automaticCompile, substitute,
+                                                  toMustache)
 
 
 data Arguments = Arguments
-  { template     :: FilePath
-  , templateDirs :: [FilePath]
-  , dataFiles    :: [FilePath]
+  { template     ∷ FilePath
+  , templateDirs ∷ [FilePath]
+  , dataFiles    ∷ [FilePath]
   } deriving (Show, Data, Typeable)
 
 
@@ -37,19 +41,18 @@ commandArgs = Arguments
 
 
 readJSON ∷ FilePath → IO (Either String Value)
-readJSON = fmap eitherDecode . BS.readFile
+readJSON = fmap eitherDecode ∘ BS.readFile
 
 
 readYAML ∷ FilePath → IO (Either String Value)
-readYAML = fmap Y.decodeEither . B.readFile
+readYAML = fmap decodeEither ∘ B.readFile
 
 
 main ∷ IO ()
 main = do
-  a@(Arguments { template, templateDirs, dataFiles }) <- cmdArgs commandArgs
+  (Arguments { template, templateDirs, dataFiles }) ← cmdArgs commandArgs
 
-  print a
-  eitherTemplate ← compileTemplate templateDirs template
+  eitherTemplate ← automaticCompile templateDirs template
 
   case eitherTemplate of
     Left err → print err
@@ -58,12 +61,12 @@ main = do
 
         let decoder =
               case takeExtension file of
-                ".yml" → readYAML
+                ".yml"  → readYAML
                 ".yaml" → readYAML
-                _ → readJSON
+                _       → readJSON
         decoded ← decoder file
 
         either
           putStrLn
-          TIO.putStrLn
-          $ substitute compiledTemplate . toMustache <$> decoded
+          (TIO.putStrLn ∘ substitute compiledTemplate ∘ toMustache)
+          decoded

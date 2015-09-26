@@ -17,7 +17,7 @@ module Text.Mustache.Parser
 
   -- * Parser
 
-  , MustacheParser
+  , Parser
 
   -- ** Components
 
@@ -32,18 +32,22 @@ module Text.Mustache.Parser
 
 
 import           Control.Monad
-import           Conversion          (Conversion, convert)
-import           Conversion.Text     ()
-import           Data.Char           (isAlphaNum, isSpace)
-import           Data.Foldable       (fold)
-import           Data.Functor        ((<$>))
-import           Data.List           (nub)
-import           Data.Maybe          (fromMaybe)
-import           Data.Monoid         (mempty, (<>))
-import           Data.Text           as T (Text, pack, null, intercalate, unpack)
-import           Prelude             as Prel
+import           Control.Monad.Unicode
+import           Conversion            (Conversion, convert)
+import           Conversion.Text       ()
+import           Data.Char             (isAlphaNum, isSpace)
+import           Data.Foldable         (fold)
+import           Data.Functor          ((<$>))
+import           Data.List             (nub)
+import           Data.Maybe            (fromMaybe)
+import           Data.Monoid           (mempty, (<>))
+import           Data.Monoid.Unicode
+import           Data.Text             as T (Text, intercalate, null, pack,
+                                             unpack)
+import           Prelude               as Prel
+import           Prelude.Unicode
 import           Text.Mustache.Types
-import           Text.Parsec         as P hiding (parse)
+import           Text.Parsec           as P hiding (endOfLine, parse)
 
 
 data MustacheConf = MustacheConf
@@ -98,16 +102,16 @@ implicitIterator = '.'
 -- | Cannot be a letter, number or the nesting separation Character @.@
 isAllowedDelimiterCharacter ∷ Char → Bool
 isAllowedDelimiterCharacter =
-  not . Prel.or . sequence
+  not ∘ Prel.or ∘ sequence
     [ isSpace, isAlphaNum, (== nestingSeparator) ]
-allowedDelimiterCharacter ∷ MustacheParser Char
+allowedDelimiterCharacter ∷ Parser Char
 allowedDelimiterCharacter =
   satisfy isAllowedDelimiterCharacter
 
 
 -- | Empty configuration
 emptyState ∷ MustacheState
-emptyState = MustacheState ("", "") mempty True Nothing
+emptyState = MustacheState ("", "") (∅) True Nothing
 
 
 -- | Default configuration (delimiters = ("{{", "}}"))
@@ -115,21 +119,22 @@ defaultConf ∷ MustacheConf
 defaultConf = MustacheConf ("{{", "}}")
 
 
-initState ∷ MustacheConf -> MustacheState
+initState ∷ MustacheConf → MustacheState
 initState (MustacheConf { delimiters }) = emptyState { sDelimiters = delimiters }
 
 
-type MustacheParser = Parsec Text MustacheState
+type Parser = Parsec Text MustacheState
 
 
 (<<) ∷ Monad m ⇒ m b → m a → m b
-(<<) = flip (>>)
+(<<) = flip (≫)
 
 
-customEndOfLine ∷ MustacheParser String
-customEndOfLine =
-  try (return <$> char '\n')
-  <|> string "\r\n"
+endOfLine ∷ Parser String
+endOfLine = do
+  r ← optionMaybe $ char '\r'
+  n ← char '\n'
+  return $ maybe id (:) r [n]
 
 
 {-|
@@ -140,10 +145,10 @@ parse = parseWithConf defaultConf
 
 
 parseWithConf ∷ MustacheConf → FilePath → Text → Either ParseError AST
-parseWithConf = P.runParser parseText . initState
+parseWithConf = P.runParser parseText ∘ initState
 
 
-parseText ∷ MustacheParser AST
+parseText ∷ Parser AST
 parseText = do
   (MustacheState { isBeginngingOfLine }) ← getState
   if isBeginngingOfLine
@@ -151,62 +156,62 @@ parseText = do
     else continueLine
 
 
-appendTextStack ∷ Conversion t Text ⇒ t → MustacheParser ()
-appendTextStack t = modifyState (\s → s { textStack = textStack s <> convert t})
+appendTextStack ∷ Conversion t Text ⇒ t → Parser ()
+appendTextStack t = modifyState (\s → s { textStack = textStack s ⊕ convert t})
 
 
-continueLine ∷ MustacheParser AST
+continueLine ∷ Parser AST
 continueLine = do
   (MustacheState { sDelimiters = ( start, _ )}) ← getState
   let forbidden = head start : "\n\r"
 
-  many (noneOf forbidden) >>= appendTextStack
+  many (noneOf forbidden) ≫= appendTextStack
 
-  (try customEndOfLine >>= appendTextStack >> parseLine)
-    <|> (try (string start) >> switchOnTag >>= continueFromTag)
-    <|> (try eof >> finishFile)
-    <|> (anyChar >>= appendTextStack >> continueLine)
+  (try endOfLine ≫= appendTextStack ≫ parseLine)
+    <|> (try (string start) ≫ switchOnTag ≫= continueFromTag)
+    <|> (try eof ≫ finishFile)
+    <|> (anyChar ≫= appendTextStack ≫ continueLine)
 
 
-flushText ∷ MustacheParser AST
+flushText ∷ Parser AST
 flushText = do
   s@(MustacheState { textStack = text }) ← getState
-  putState $ s { textStack = mempty }
+  putState $ s { textStack = (∅) }
   return $ if T.null text
               then []
               else return $ TextBlock text
 
 
-finishFile ∷ MustacheParser AST
+finishFile ∷ Parser AST
 finishFile =
   getState >>= \case
     (MustacheState {currentSectionName = Nothing}) → flushText
     (MustacheState {currentSectionName = Just name}) →
-      parserFail $ "Unclosed section " <> show name
+      parserFail $ "Unclosed section " ⊕ show name
 
 
-parseLine ∷ MustacheParser AST
+parseLine ∷ Parser AST
 parseLine = do
   (MustacheState { sDelimiters = ( start, _ ) }) ← getState
   initialWhitespace ← many (oneOf " \t")
   let handleStandalone = do
         tag ← switchOnTag
-        let continueNoStandalone = appendTextStack initialWhitespace >> continueFromTag tag
+        let continueNoStandalone = appendTextStack initialWhitespace ≫ continueFromTag tag
         case tag of
           Tag _ → continueNoStandalone
           _ →
             ( do
               try (skipMany (oneOf " \t"))
-              try eof <|> void (try customEndOfLine)
+              try eof <|> void (try endOfLine)
               continueFromTag tag
             )
               <|> continueNoStandalone
-  (try (string start) >> handleStandalone)
-    <|> (try eof >> appendTextStack initialWhitespace >> finishFile)
-    <|> (appendTextStack initialWhitespace >> continueLine)
+  (try (string start) ≫ handleStandalone)
+    <|> (try eof ≫ appendTextStack initialWhitespace ≫ finishFile)
+    <|> (appendTextStack initialWhitespace ≫ continueLine)
 
 
-continueFromTag ∷ ParseTagRes → MustacheParser AST
+continueFromTag ∷ ParseTagRes → Parser AST
 continueFromTag (SectionBegin inverted name) = do
   textNodes ← flushText
   state@(MustacheState
@@ -219,43 +224,43 @@ continueFromTag (SectionBegin inverted name) = do
           else Section
   modifyState $ \s → s { currentSectionName = previousSection }
   outerSectionContent ← parseText
-  return (textNodes <> [sectionTag name innerSectionContent] <> outerSectionContent)
+  return (textNodes ⊕ [sectionTag name innerSectionContent] ⊕ outerSectionContent)
 continueFromTag (SectionEnd name) = do
   (MustacheState
     { currentSectionName }) ← getState
   case currentSectionName of
     Just name' | name' == name → flushText
-    Just name' → parserFail $ "Expected closing sequence for \"" <> show name <> "\" got \"" <> show name' <> "\"."
-    Nothing → parserFail $ "Encountered closing sequence for \"" <> show name <> "\" which has never been opened."
+    Just name' → parserFail $ "Expected closing sequence for \"" ⊕ show name ⊕ "\" got \"" ⊕ show name' ⊕ "\"."
+    Nothing → parserFail $ "Encountered closing sequence for \"" ⊕ show name ⊕ "\" which has never been opened."
 continueFromTag (Tag tag) = do
   textNodes    ← flushText
   furtherNodes ← parseText
-  return $ textNodes <> return tag <> furtherNodes
+  return $ textNodes ⊕ return tag ⊕ furtherNodes
 continueFromTag HandledTag = continueLine
 
 
-switchOnTag ∷ MustacheParser ParseTagRes
+switchOnTag ∷ Parser ParseTagRes
 switchOnTag = do
   (MustacheState { sDelimiters = ( _, end )}) ← getState
 
   choice
-    [ SectionBegin False <$> (try (char sectionBegin) >> genParseTagEnd mempty)
+    [ SectionBegin False <$> (try (char sectionBegin) ≫ genParseTagEnd mempty)
     , SectionEnd
-        <$> (try (char sectionEnd) >> genParseTagEnd mempty)
+        <$> (try (char sectionEnd) ≫ genParseTagEnd mempty)
     , Tag . Variable False
-        <$> (try (char unescape1) >> genParseTagEnd mempty)
+        <$> (try (char unescape1) ≫ genParseTagEnd mempty)
     , Tag . Variable False
-        <$> (try (char (fst unescape2)) >> genParseTagEnd (return $ snd unescape2))
+        <$> (try (char (fst unescape2)) ≫ genParseTagEnd (return $ snd unescape2))
     , Tag . Partial
-        <$> (try (char partialBegin) >> spaces >> (noneOf (nub end) `manyTill` try (spaces >> string end)))
+        <$> (try (char partialBegin) ≫ spaces ≫ (noneOf (nub end) `manyTill` try (spaces ≫ string end)))
     , return HandledTag
-        << (try (char delimiterChange) >> parseDelimChange)
+        << (try (char delimiterChange) ≫ parseDelimChange)
     , SectionBegin True
-        <$> (try (char invertedSectionBegin) >> genParseTagEnd mempty >>= \case
+        <$> (try (char invertedSectionBegin) ≫ genParseTagEnd mempty >>= \case
               n@(NamedData _) → return n
               _ → parserFail "Inverted Sections can not be implicit."
             )
-    , return HandledTag << (try (char comment) >> manyTill anyChar (try $ string end))
+    , return HandledTag << (try (char comment) ≫ manyTill anyChar (try $ string end))
     , Tag . Variable True
         <$> genParseTagEnd mempty
     ]
@@ -265,31 +270,31 @@ switchOnTag = do
       spaces
       delim1 ← allowedDelimiterCharacter `manyTill` space
       spaces
-      delim2 ← allowedDelimiterCharacter `manyTill` try (spaces >> string (delimiterChange : end))
-      when (delim1 == mempty || delim2 == mempty)
+      delim2 ← allowedDelimiterCharacter `manyTill` try (spaces ≫ string (delimiterChange : end))
+      when (delim1 == mempty || delim2 == (∅))
         $ parserFail "Tags must contain more than 0 characters"
       oldState ← getState
       putState $ oldState { sDelimiters = (delim1, delim2) }
 
 
-genParseTagEnd ∷ String → MustacheParser DataIdentifier
+genParseTagEnd ∷ String → Parser DataIdentifier
 genParseTagEnd emod = do
   (MustacheState { sDelimiters = ( start, end ) }) ← getState
 
   let nEnd = emod <> end
-      disallowed = nub $ nestingSeparator : start <> end
+      disallowed = nub $ nestingSeparator : start ⊕ end
 
-      parseOne :: MustacheParser [Text]
+      parseOne :: Parser [Text]
       parseOne = do
 
         one ← noneOf disallowed
           `manyTill` lookAhead
-            (try (spaces >> void (string nEnd))
+            (try (spaces ≫ void (string nEnd))
             <|> try (void $ char nestingSeparator))
 
-        others ← (char nestingSeparator >> parseOne)
-                  <|> (const mempty <$> (spaces >> string nEnd))
+        others ← (char nestingSeparator ≫ parseOne)
+                  <|> (const mempty <$> (spaces ≫ string nEnd))
         return $ pack one : others
   spaces
-  (try (char implicitIterator) >> spaces >> string nEnd >> return Implicit)
+  (try (char implicitIterator) ≫ spaces ≫ string nEnd ≫ return Implicit)
     <|> (NamedData <$> parseOne)

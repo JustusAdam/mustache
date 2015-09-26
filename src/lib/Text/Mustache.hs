@@ -6,6 +6,35 @@ License     : LGPL-3
 Maintainer  : development@justusadam.com
 Stability   : experimental
 Portability : POSIX
+
+* How to use this library
+
+This module exposes some of the most convenient functions for dealing with mustache
+templates.
+
+The easiest way of compiling a file and its potential includes (called partials)
+is by using the 'compileTemplate' function.
+@
+      -- the search space encompasses all directories in which the compiler should
+      -- search for the template source files
+      --
+      -- the search is conducted in order, from left to right.
+  let searchSpace = [".", "./templates"]
+      -- the templateName is the relative path of the template to any directory
+      -- of the search space
+      templateName = "main.mustache"
+
+    compiled <- automaticCompile searchSpace templateName
+    case compiled of
+      -- the compiler will throw errors if either the template is malformed
+      -- or the source file for a partial could not be found
+      Left err -> print err
+      Right template -> return () -- this is where you can start using it
+@
+
+Should your search space be only the current working directory, you can use
+'localAutomaticCompile'.
+
 -}
 {-# LANGUAGE LambdaCase #-}
 module Text.Mustache
@@ -13,10 +42,10 @@ module Text.Mustache
   -- * Compiling
 
   -- ** Automatic
-    compileTemplate
+    automaticCompile, localAutomaticCompile
 
   -- ** Manually
-  , compileTemplateWithCache, parseTemplate, MustacheTemplate(..)
+  , compileTemplateWithCache, parseTemplate, Template(..)
 
   -- * Rendering
 

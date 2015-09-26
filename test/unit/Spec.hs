@@ -151,7 +151,7 @@ substituteSpec :: Spec
 substituteSpec =
   describe "substitute" $ do
 
-    let toTemplate ast' = MustacheTemplate "testsuite" ast' mempty
+    let toTemplate ast' = Template "testsuite" ast' mempty
 
     it "substitutes a html escaped value for a variable" $
       substitute

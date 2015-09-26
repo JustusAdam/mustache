@@ -7,15 +7,16 @@ Maintainer  : development@justusadam.com
 Stability   : experimental
 Portability : POSIX
 -}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE UnicodeSyntax     #-}
-{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE UnicodeSyntax         #-}
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
     AST
-  , MustacheTemplate(..)
+  , Template(..)
   , Node(..)
   , DataIdentifier(..)
   -- * Types for the Substitution / Data
@@ -30,6 +31,8 @@ module Text.Mustache.Types
   ) where
 
 
+import           Conversion
+import           Conversion.Text     ()
 import qualified Data.Aeson          as Aeson
 import           Data.Functor        ((<$>))
 import           Data.HashMap.Strict as HM
@@ -37,17 +40,15 @@ import           Data.Scientific
 import           Data.Text
 import qualified Data.Text.Lazy      as LT
 import qualified Data.Vector         as V
-import           Conversion
-import           Conversion.Text     ()
-
+import           Prelude.Unicode
 
 -- | Abstract syntax tree for a mustache template
 type AST = [Node Text]
 
 
 -- | Basic values composing the AST
-data Node a
-  = TextBlock a
+data Node α
+  = TextBlock α
   | Section DataIdentifier AST
   | InvertedSection DataIdentifier AST
   | Variable Bool DataIdentifier
@@ -67,7 +68,7 @@ type Pair = (Text, Value)
 
 
 -- | Representation of stateful context for the substitution process
-data Context a = Context [a] a
+data Context α = Context [α] α
 
 
 -- | Internal value AST
@@ -92,18 +93,18 @@ instance Show Value where
 
 
 -- | Conversion class
-class ToMustache a where
-  toMustache ∷ a → Value
+class ToMustache ω where
+  toMustache ∷ ω → Value
 
 
 instance ToMustache [Char] where
-  toMustache = String . pack
+  toMustache = String ∘ pack
 
 instance ToMustache Bool where
   toMustache = Bool
 
 instance ToMustache Char where
-  toMustache = String . pack . return
+  toMustache = String ∘ pack ∘ return
 
 instance ToMustache () where
   toMustache = const Null
@@ -112,7 +113,7 @@ instance ToMustache Text where
   toMustache = String
 
 instance ToMustache LT.Text where
-  toMustache = String . LT.toStrict
+  toMustache = String ∘ LT.toStrict
 
 instance ToMustache Scientific where
   toMustache = Number
@@ -120,35 +121,35 @@ instance ToMustache Scientific where
 instance ToMustache Value where
   toMustache = id
 
-instance ToMustache m ⇒ ToMustache [m] where
-  toMustache = Array . V.fromList . fmap toMustache
+instance ToMustache ω ⇒ ToMustache [ω] where
+  toMustache = Array ∘ V.fromList ∘ fmap toMustache
 
-instance ToMustache m ⇒ ToMustache (V.Vector m) where
-  toMustache = Array . fmap toMustache
+instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
+  toMustache = Array ∘ fmap toMustache
 
-instance ToMustache m ⇒ ToMustache (HM.HashMap Text m) where
-  toMustache = Object . fmap toMustache
+instance ToMustache ω ⇒ ToMustache (HM.HashMap Text ω) where
+  toMustache = Object ∘ fmap toMustache
 
 instance ToMustache (Context Value → AST → AST) where
   toMustache = Lambda
 
 instance ToMustache (Context Value → AST → Text) where
   toMustache f = Lambda wrapper
-    where wrapper c lAST = return . TextBlock $ f c lAST
+    where wrapper c lAST = return ∘ TextBlock $ f c lAST
 
 instance ToMustache (Context Value → AST → String) where
   toMustache f = toMustache wrapper
-    where wrapper c = pack . f c
+    where wrapper c = pack ∘ f c
 
 instance ToMustache (AST → AST) where
   toMustache f = Lambda $ const f
 
 instance ToMustache (AST → Text) where
   toMustache f = Lambda wrapper
-    where wrapper _ = (return . TextBlock) . f
+    where wrapper _ = (return ∘ TextBlock) ∘ f
 
 instance ToMustache (AST → String) where
-  toMustache f = toMustache (pack . f)
+  toMustache f = toMustache (pack ∘ f)
 
 instance ToMustache Aeson.Value where
   toMustache (Aeson.Object o) = Object $ fmap toMustache o
@@ -184,47 +185,48 @@ instance ToMustache Aeson.Value where
 -- a 'ToMustache' instance, or alternatively if they lack such an instance but provide
 -- an instance for the 'ToJSON' typeclass we can use the '~=' operator.
 object ∷ [(Text, Value)] → Value
-object = Object . HM.fromList
+object = Object ∘ HM.fromList
 
 
 -- | Map keys to values that provide a 'ToMustache' instance
 --
 -- Recommended in conjunction with the `OverloadedStrings` extension.
-(~>) ∷ ToMustache m ⇒ Text → m → Pair
-(~>) t = (t, ) . toMustache
+(~>) ∷ ToMustache ω ⇒ Text → ω → Pair
+(~>) t = (t, ) ∘ toMustache
 
 
 -- | Map keys to values that provide a 'ToJSON' instance
 --
 -- Recommended in conjunction with the `OverloadedStrings` extension.
-(~=) ∷ Aeson.ToJSON j ⇒ Text → j → Pair
-(~=) t = (t ~>) . Aeson.toJSON
+(~=) ∷ Aeson.ToJSON ι ⇒ Text → ι → Pair
+(~=) t = (t ~>) ∘ Aeson.toJSON
 
 
 -- | Conceptually similar to '~>' but uses arbitrary String-likes as keys.
-(~~>) ∷ (Conversion t Text, ToMustache m) ⇒ t → m → Pair
-(~~>) = (~>) . convert
+(~~>) ∷ (Conversion ζ Text, ToMustache ω) ⇒ ζ → ω → Pair
+(~~>) = (~>) ∘ convert
 
 
 -- | Conceptually similar to '~=' but uses arbitrary String-likes as keys.
-(~~=) ∷ (Conversion t Text, Aeson.ToJSON j) ⇒ t → j → Pair
-(~~=) = (~=) . convert
+(~~=) ∷ (Conversion ζ Text, Aeson.ToJSON ι) ⇒ ζ → ι → Pair
+(~~=) = (~=) ∘ convert
 
 
 -- | Converts arbitrary String-likes to Values
-toTextBlock ∷ Conversion t Text ⇒ t → Value
-toTextBlock = String . convert
+toTextBlock ∷ Conversion ζ Text ⇒ ζ → Value
+toTextBlock = String ∘ convert
 
 
 -- | Converts a value that can be represented as JSON to a Value.
-mFromJSON ∷ Aeson.ToJSON j ⇒ j → Value
-mFromJSON = toMustache . Aeson.toJSON
+mFromJSON ∷ Aeson.ToJSON ι ⇒ ι → Value
+mFromJSON = toMustache ∘ Aeson.toJSON
 
 
 {-|
   A compiled Template with metadata.
 -}
-data MustacheTemplate = MustacheTemplate { name     ∷ String
-                                         , ast      ∷ AST
-                                         , partials ∷ HashMap String MustacheTemplate
-                                         } deriving (Show)
+data Template = Template
+  { name     ∷ String
+  , ast      ∷ AST
+  , partials ∷ HashMap String Template
+  } deriving (Show)
