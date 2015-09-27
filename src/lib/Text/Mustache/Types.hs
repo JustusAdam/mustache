@@ -62,9 +62,9 @@ data DataIdentifier
   deriving (Show, Eq)
 
 
-type Array = V.Vector Value
+type Array  = V.Vector Value
 type Object = HM.HashMap Text Value
-type Pair = (Text, Value)
+type Pair   = (Text, Value)
 
 
 -- | Representation of stateful context for the substitution process
@@ -74,28 +74,31 @@ data Context α = Context [α] α
 -- | Internal value AST
 data Value
   = Object Object
-  | Array Array
+  | Array  Array
   | Number Scientific
   | String Text
   | Lambda (Context Value → AST → AST)
-  | Bool Bool
+  | Bool   Bool
   | Null
 
 
 instance Show Value where
-  show (Lambda _)  = "Lambda Context Value → AST → Either String AST"
-  show (Object o)  = show o
-  show (Array a)   = show a
-  show (String s)  = show s
-  show (Number n)  = show n
-  show (Bool b)    = show b
-  show Null        = "null"
+  show (Lambda _) = "Lambda Context Value → AST → Either String AST"
+  show (Object o) = show o
+  show (Array  a) = show a
+  show (String s) = show s
+  show (Number n) = show n
+  show (Bool   b) = show b
+  show Null       = "null"
 
 
 -- | Conversion class
 class ToMustache ω where
   toMustache ∷ ω → Value
 
+
+instance ToMustache Value where
+  toMustache = id
 
 instance ToMustache [Char] where
   toMustache = String ∘ pack
@@ -117,9 +120,6 @@ instance ToMustache LT.Text where
 
 instance ToMustache Scientific where
   toMustache = Number
-
-instance ToMustache Value where
-  toMustache = id
 
 instance ToMustache ω ⇒ ToMustache [ω] where
   toMustache = Array ∘ V.fromList ∘ fmap toMustache
@@ -159,6 +159,74 @@ instance ToMustache Aeson.Value where
   toMustache (Aeson.Bool   b) = Bool b
   toMustache (Aeson.Null)     = Null
 
+instance (ToMustache α, ToMustache β) ⇒ ToMustache (α, β) where
+  toMustache (a, b) = toMustache [toMustache a, toMustache b]
+
+instance (ToMustache α, ToMustache β, ToMustache γ) ⇒ ToMustache (α, β, γ) where
+  toMustache (a, b, c) = toMustache [toMustache a, toMustache b, toMustache c]
+
+instance (ToMustache α, ToMustache β, ToMustache γ, ToMustache δ)
+         ⇒ ToMustache (α, β, γ, δ) where
+  toMustache (a, b, c, d) = toMustache [toMustache a, toMustache b, toMustache c, toMustache d]
+
+instance (ToMustache α, ToMustache β, ToMustache γ, ToMustache δ, ToMustache ε)
+         ⇒ ToMustache (α, β, γ, δ, ε) where
+  toMustache (a, b, c, d, e) = toMustache
+    [toMustache a, toMustache b, toMustache c, toMustache d, toMustache e]
+
+instance ( ToMustache α
+         , ToMustache β
+         , ToMustache γ
+         , ToMustache δ
+         , ToMustache ε
+         , ToMustache ζ
+         ) ⇒ ToMustache (α, β, γ, δ, ε, ζ) where
+  toMustache (a, b, c, d, e, f) = toMustache
+    [ toMustache a
+    , toMustache b
+    , toMustache c
+    , toMustache d
+    , toMustache e
+    , toMustache f
+    ]
+
+instance ( ToMustache α
+         , ToMustache β
+         , ToMustache γ
+         , ToMustache δ
+         , ToMustache ε
+         , ToMustache ζ
+         , ToMustache η
+         ) ⇒ ToMustache (α, β, γ, δ, ε, ζ, η) where
+  toMustache (a, b, c, d, e, f, g) = toMustache
+    [ toMustache a
+    , toMustache b
+    , toMustache c
+    , toMustache d
+    , toMustache e
+    , toMustache f
+    , toMustache g
+    ]
+
+instance ( ToMustache α
+         , ToMustache β
+         , ToMustache γ
+         , ToMustache δ
+         , ToMustache ε
+         , ToMustache ζ
+         , ToMustache η
+         , ToMustache θ
+         ) ⇒ ToMustache (α, β, γ, δ, ε, ζ, η, θ) where
+  toMustache (a, b, c, d, e, f, g, h) = toMustache
+    [ toMustache a
+    , toMustache b
+    , toMustache c
+    , toMustache d
+    , toMustache e
+    , toMustache f
+    , toMustache g
+    , toMustache h
+    ]
 
 -- | Convenience function for creating Object values.
 --
@@ -184,7 +252,7 @@ instance ToMustache Aeson.Value where
 -- Here we can see that we can use the '~>' operator for values that have themselves
 -- a 'ToMustache' instance, or alternatively if they lack such an instance but provide
 -- an instance for the 'ToJSON' typeclass we can use the '~=' operator.
-object ∷ [(Text, Value)] → Value
+object ∷ [Pair] → Value
 object = Object ∘ HM.fromList
 
 

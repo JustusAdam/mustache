@@ -103,7 +103,7 @@ implicitIterator = '.'
 isAllowedDelimiterCharacter ∷ Char → Bool
 isAllowedDelimiterCharacter =
   not ∘ Prel.or ∘ sequence
-    [ isSpace, isAlphaNum, (== nestingSeparator) ]
+    [ isSpace, isAlphaNum, (≡ nestingSeparator) ]
 allowedDelimiterCharacter ∷ Parser Char
 allowedDelimiterCharacter =
   satisfy isAllowedDelimiterCharacter
@@ -229,7 +229,7 @@ continueFromTag (SectionEnd name) = do
   (MustacheState
     { currentSectionName }) ← getState
   case currentSectionName of
-    Just name' | name' == name → flushText
+    Just name' | name' ≡ name → flushText
     Just name' → parserFail $ "Expected closing sequence for \"" ⊕ show name ⊕ "\" got \"" ⊕ show name' ⊕ "\"."
     Nothing → parserFail $ "Encountered closing sequence for \"" ⊕ show name ⊕ "\" which has never been opened."
 continueFromTag (Tag tag) = do
@@ -247,16 +247,16 @@ switchOnTag = do
     [ SectionBegin False <$> (try (char sectionBegin) ≫ genParseTagEnd mempty)
     , SectionEnd
         <$> (try (char sectionEnd) ≫ genParseTagEnd mempty)
-    , Tag . Variable False
+    , Tag ∘ Variable False
         <$> (try (char unescape1) ≫ genParseTagEnd mempty)
-    , Tag . Variable False
+    , Tag ∘ Variable False
         <$> (try (char (fst unescape2)) ≫ genParseTagEnd (return $ snd unescape2))
-    , Tag . Partial
+    , Tag ∘ Partial
         <$> (try (char partialBegin) ≫ spaces ≫ (noneOf (nub end) `manyTill` try (spaces ≫ string end)))
     , return HandledTag
         << (try (char delimiterChange) ≫ parseDelimChange)
     , SectionBegin True
-        <$> (try (char invertedSectionBegin) ≫ genParseTagEnd mempty >>= \case
+        <$> (try (char invertedSectionBegin) ≫ genParseTagEnd mempty ≫= \case
               n@(NamedData _) → return n
               _ → parserFail "Inverted Sections can not be implicit."
             )
@@ -271,7 +271,7 @@ switchOnTag = do
       delim1 ← allowedDelimiterCharacter `manyTill` space
       spaces
       delim2 ← allowedDelimiterCharacter `manyTill` try (spaces ≫ string (delimiterChange : end))
-      when (delim1 == mempty || delim2 == (∅))
+      when (delim1 ≡ mempty ∨ delim2 ≡ (∅))
         $ parserFail "Tags must contain more than 0 characters"
       oldState ← getState
       putState $ oldState { sDelimiters = (delim1, delim2) }
@@ -281,7 +281,7 @@ genParseTagEnd ∷ String → Parser DataIdentifier
 genParseTagEnd emod = do
   (MustacheState { sDelimiters = ( start, end ) }) ← getState
 
-  let nEnd = emod <> end
+  let nEnd = emod ⊕ end
       disallowed = nub $ nestingSeparator : start ⊕ end
 
       parseOne :: Parser [Text]

@@ -7,6 +7,6 @@ module Text.Mustache.Internal (uncons) where
   import Data.List (uncons)
 #else
   uncons ∷ [a] → Maybe (a, [a])
-  uncons [] = Nothing
+  uncons []     = Nothing
   uncons (x:xs) = return (x, xs)
 #endif

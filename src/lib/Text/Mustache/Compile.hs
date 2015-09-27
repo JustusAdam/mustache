@@ -46,7 +46,7 @@ type TemplateCache = HM.HashMap String Template
   'partials' section.
 -}
 automaticCompile ∷ [FilePath] → FilePath → IO (Either ParseError Template)
-automaticCompile searchSpace = compileTemplateWithCache searchSpace mempty
+automaticCompile searchSpace = compileTemplateWithCache searchSpace (∅)
 
 
 localAutomaticCompile ∷ FilePath → IO (Either ParseError Template)
@@ -62,7 +62,7 @@ compileTemplateWithCache ∷ [FilePath]
                          → FilePath
                          → IO (Either ParseError Template)
 compileTemplateWithCache searchSpace templates initName =
-   runEitherT $ evalStateT (compile' initName) $ flattenPartials templates
+  runEitherT $ evalStateT (compile' initName) $ flattenPartials templates
   where
     compile' :: FilePath
              → StateT
@@ -93,7 +93,7 @@ cacheFromList = flattenPartials ∘ fromList ∘ fmap (name &&& id)
 
 
 parseTemplate ∷ String → Text → Either ParseError Template
-parseTemplate name' = fmap (flip (Template name') mempty) ∘ parse name'
+parseTemplate name' = fmap (flip (Template name') (∅)) ∘ parse name'
 
 
 {-|
@@ -109,10 +109,10 @@ getPartials = join ∘ fmap getPartials'
   Find partials in a single Node
 -}
 getPartials' ∷ Node Text → [FilePath]
-getPartials' (Partial p) = return p
-getPartials' (Section _ n) = getPartials n
+getPartials' (Partial         p  ) = return p
+getPartials' (Section         _ n) = getPartials n
 getPartials' (InvertedSection _ n) = getPartials n
-getPartials' _ = (∅)
+getPartials' _                     = (∅)
 
 
 flattenPartials ∷ TemplateCache → TemplateCache

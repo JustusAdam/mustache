@@ -53,7 +53,7 @@ substitute t = substituteValue t ∘ toMustache
 -}
 substituteValue ∷ Template → Value → Text
 substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
-  joinSubstituted (substitute' (Context mempty dataStruct)) cAst
+  joinSubstituted (substitute' (Context (∅) dataStruct)) cAst
   where
     joinSubstituted f = fold ∘ fmap f
 
@@ -84,9 +84,9 @@ substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
                 newContext = Context (arr:focus:parents) focus'
               in
                 joinSubstituted (substitute' newContext) secAST
-        Just (Bool b) | not b → (∅)
-        Just (Lambda l) → joinSubstituted (substitute' context) (l context secAST)
-        Just focus' →
+        Just (Bool False) → (∅)
+        Just (Lambda l)   → joinSubstituted (substitute' context) (l context secAST)
+        Just focus'       →
           let
             newContext = Context (focus:parents) focus'
           in
@@ -108,15 +108,15 @@ substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
     substitute' (Context _ current) (Variable _ Implicit) = toString current
     substitute' context (Variable escaped (NamedData varName)) =
       maybe
-        mempty
+        (∅)
         (if escaped then escapeHTML else id)
         $ toString <$> search context varName
 
     -- substituting a partial
     substitute' context (Partial pName) =
       maybe
-        mempty
-        (joinSubstituted (substitute' context) . ast)
+        (∅)
+        (joinSubstituted (substitute' context) ∘ ast)
         $ HM.lookup pName cPartials
 
 
@@ -126,7 +126,7 @@ search (Context parents focus) val@(x:xs) =
   (
     ( case focus of
       (Object o) → HM.lookup x o
-      _ → Nothing
+      _          → Nothing
     )
     <|> ( do
           (newFocus, newParents) ← uncons parents
@@ -138,9 +138,9 @@ search (Context parents focus) val@(x:xs) =
 
 
 innerSearch ∷ [T.Text] → Value → Maybe Value
-innerSearch [] v = Just v
+innerSearch []     v          = Just v
 innerSearch (y:ys) (Object o) = HM.lookup y o ≫= innerSearch ys
-innerSearch _ _ = Nothing
+innerSearch _      _          = Nothing
 
 
 toString ∷ Value → Text
