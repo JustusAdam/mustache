@@ -24,14 +24,13 @@ import           Control.Applicative    ((<$>), (<|>))
 import           Control.Arrow          (first)
 import           Control.Monad
 import           Control.Monad.Unicode
-import           Data.Foldable          (find, fold)
+import           Data.Foldable          (fold)
 import           Data.HashMap.Strict    as HM hiding (map)
 import           Data.Maybe             (fromMaybe)
 import           Data.Monoid.Unicode
 import           Data.Scientific        (floatingOrInteger)
-import           Data.Text              as T (Text, dropEnd, isSuffixOf, length,
-                                              null, pack, replace, stripSuffix)
-import           Data.Traversable       (traverse)
+import           Data.Text              as T (Text, isSuffixOf, null, pack,
+                                             replace, stripSuffix)
 import qualified Data.Vector            as V
 import           Prelude                hiding (length, lines, unlines)
 import           Prelude.Unicode

@@ -5,7 +5,6 @@ module Text.Mustache.Compile
   ) where
 
 
-import           Control.Applicative
 import           Control.Arrow              ((&&&))
 import           Control.Monad
 import           Control.Monad.Except
@@ -13,12 +12,9 @@ import           Control.Monad.State
 import           Control.Monad.Trans.Either
 import           Control.Monad.Unicode
 import           Data.Bool
-import           Data.Foldable              (fold)
 import           Data.Function.JAExtra
 import           Data.HashMap.Strict        as HM
-import           Data.List
-import           Data.Monoid
-import           Data.Monoid.Unicode
+import           Data.Monoid.Unicode        ((⊕), (∅))
 import           Data.Text                  hiding (concat, find, map, uncons)
 import qualified Data.Text.IO               as TIO
 import           Prelude.Unicode

@@ -10,7 +10,6 @@ import           Control.Applicative  ((<$>), (<*>))
 import           Control.Monad
 import           Data.Either
 import           Data.Foldable        (for_)
-import           Data.Function        ((&))
 import qualified Data.HashMap.Strict  as HM (HashMap, elems, empty, lookup,
                                              traverseWithKey)
 import           Data.List
@@ -67,6 +66,10 @@ instance FromJSON LangSpecTest where
     <*> o .: "expected"
     <*> o .:? "partials" .!= HM.empty
   parseJSON _ = mzero
+
+
+(&) ∷ a → (a → b) → b
+(&) = flip ($)
 
 
 parserSpec :: Spec

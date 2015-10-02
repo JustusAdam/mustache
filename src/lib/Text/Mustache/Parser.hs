@@ -36,11 +36,9 @@ import           Control.Monad.Unicode
 import           Conversion                  (Conversion, convert)
 import           Conversion.Text             ()
 import           Data.Char                   (isAlphaNum, isSpace)
-import           Data.Foldable               (fold)
 import           Data.Functor                ((<$>))
 import           Data.List                   (nub)
-import           Data.Monoid                 (mempty, (<>))
-import           Data.Monoid.Unicode
+import           Data.Monoid.Unicode         ((∅), (⊕))
 import           Data.Text                   as T (Text, null, pack)
 import           Prelude                     as Prel
 import           Prelude.Unicode
@@ -249,11 +247,11 @@ switchOnTag = do
   (MustacheState { sDelimiters = ( _, end )}) ← getState
 
   choice
-    [ SectionBegin False <$> (try (char sectionBegin) ≫ genParseTagEnd mempty)
+    [ SectionBegin False <$> (try (char sectionBegin) ≫ genParseTagEnd (∅))
     , SectionEnd
-        <$> (try (char sectionEnd) ≫ genParseTagEnd mempty)
+        <$> (try (char sectionEnd) ≫ genParseTagEnd (∅))
     , Tag ∘ Variable False
-        <$> (try (char unescape1) ≫ genParseTagEnd mempty)
+        <$> (try (char unescape1) ≫ genParseTagEnd (∅))
     , Tag ∘ Variable False
         <$> (try (char (fst unescape2)) ≫ genParseTagEnd (return $ snd unescape2))
     , Tag ∘ Partial Nothing
@@ -261,13 +259,13 @@ switchOnTag = do
     , return HandledTag
         << (try (char delimiterChange) ≫ parseDelimChange)
     , SectionBegin True
-        <$> (try (char invertedSectionBegin) ≫ genParseTagEnd mempty ≫= \case
+        <$> (try (char invertedSectionBegin) ≫ genParseTagEnd (∅) ≫= \case
               n@(NamedData _) → return n
               _ → parserFail "Inverted Sections can not be implicit."
             )
     , return HandledTag << (try (char comment) ≫ manyTill anyChar (try $ string end))
     , Tag . Variable True
-        <$> genParseTagEnd mempty
+        <$> genParseTagEnd (∅)
     ]
   where
     parseDelimChange = do
@@ -276,7 +274,7 @@ switchOnTag = do
       delim1 ← allowedDelimiterCharacter `manyTill` space
       spaces
       delim2 ← allowedDelimiterCharacter `manyTill` try (spaces ≫ string (delimiterChange : end))
-      when (delim1 ≡ mempty ∨ delim2 ≡ (∅))
+      when (delim1 ≡ (∅) ∨ delim2 ≡ (∅))
         $ parserFail "Tags must contain more than 0 characters"
       oldState ← getState
       putState $ oldState { sDelimiters = (delim1, delim2) }
@@ -298,7 +296,7 @@ genParseTagEnd emod = do
             <|> try (void $ char nestingSeparator))
 
         others ← (char nestingSeparator ≫ parseOne)
-                  <|> (const mempty <$> (spaces ≫ string nEnd))
+                  <|> (const (∅) <$> (spaces ≫ string nEnd))
         return $ pack one : others
   spaces
   (try (char implicitIterator) ≫ spaces ≫ string nEnd ≫ return Implicit)
