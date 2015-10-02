@@ -3,7 +3,7 @@ Module      : $Header$
 Description : Types and conversions
 Copyright   : (c) Justus Adam, 2015
 License     : LGPL-3
-Maintainer  : development@justusadam.com
+Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
@@ -21,13 +21,15 @@ module Text.Mustache.Types
   , DataIdentifier(..)
   -- * Types for the Substitution / Data
   , Value(..)
+  , Key
   -- ** Converting
   , object
   , (~>), (↝), (~=), (⥱), (~~>), (~↝), (~~=), (~⥱)
   , ToMustache, toMustache, toTextBlock, mFromJSON
   -- ** Representation
-  , Array, Object
+  , Array, Object, Pair
   , Context(..)
+  , TemplateCache
   ) where
 
 
@@ -55,14 +57,18 @@ data Node α
   deriving (Show, Eq)
 
 
+-- | Kinds of identifiers for Variables and sections
 data DataIdentifier
-  = NamedData [Text]
+  = NamedData [Key]
   | Implicit
   deriving (Show, Eq)
 
 
+-- | A list-like structure used in 'Value'
 type Array  = V.Vector Value
+-- | A map-like structure used in 'Value'
 type Object = HM.HashMap Text Value
+-- | Source type for constructing 'Object's
 type Pair   = (Text, Value)
 
 
@@ -322,11 +328,17 @@ mFromJSON ∷ Aeson.ToJSON ι ⇒ ι → Value
 mFromJSON = toMustache ∘ Aeson.toJSON
 
 
+-- | A collection of templates with quick access via their hashed names
+type TemplateCache = HM.HashMap String Template
+
+-- | Type of key used for retrieving data from 'Value's
+type Key = Text
+
 {-|
   A compiled Template with metadata.
 -}
 data Template = Template
   { name     ∷ String
   , ast      ∷ AST
-  , partials ∷ HashMap String Template
+  , partials ∷ TemplateCache
   } deriving (Show)

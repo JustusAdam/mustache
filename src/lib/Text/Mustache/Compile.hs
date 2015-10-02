@@ -1,7 +1,16 @@
+{-|
+Module      : $Header$
+Description : Basic functions for dealing with mustache templates.
+Copyright   : (c) Justus Adam, 2015
+License     : LGPL-3
+Maintainer  : dev@justus.science
+Stability   : experimental
+Portability : POSIX
+-}
 {-# LANGUAGE UnicodeSyntax #-}
 module Text.Mustache.Compile
   ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
-  , parseTemplate, cacheFromList, getPartials
+  , compileTemplate, cacheFromList, getPartials
   ) where
 
 
@@ -27,9 +36,6 @@ import           Text.Parsec.Pos
 import           Text.Printf
 
 
-type TemplateCache = HM.HashMap String Template
-
-
 {-|
   Compiles a mustache template provided by name including the mentioned partials.
 
@@ -45,6 +51,7 @@ automaticCompile ∷ [FilePath] → FilePath → IO (Either ParseError Template)
 automaticCompile searchSpace = compileTemplateWithCache searchSpace (∅)
 
 
+-- | Compile the template with the search space set to only the current directory
 localAutomaticCompile ∷ FilePath → IO (Either ParseError Template)
 localAutomaticCompile = automaticCompile ["."]
 
@@ -72,7 +79,7 @@ compileTemplateWithCache searchSpace templates initName =
         Nothing → do
           rawSource ← lift $ getFile searchSpace name'
           compiled@(Template { ast = mAST }) ←
-            lift $ hoistEither $ parseTemplate name' rawSource
+            lift $ hoistEither $ compileTemplate name' rawSource
 
           foldM
             (\st@(Template { partials = p }) partialName → do
@@ -84,12 +91,15 @@ compileTemplateWithCache searchSpace templates initName =
             (getPartials mAST)
 
 
+-- | Flatten a list of Templates into a single 'TemplateChache'
 cacheFromList ∷ [Template] → TemplateCache
 cacheFromList = flattenPartials ∘ fromList ∘ fmap (name &&& id)
 
 
-parseTemplate ∷ String → Text → Either ParseError Template
-parseTemplate name' = fmap (flip (Template name') (∅)) ∘ parse name'
+-- | Compiles a 'Template' directly from 'Text' without checking for missing partials.
+-- the result will be a 'Template' with an empty 'partials' cache.
+compileTemplate ∷ String → Text → Either ParseError Template
+compileTemplate name' = fmap (flip (Template name') (∅)) ∘ parse name'
 
 
 {-|

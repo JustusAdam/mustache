@@ -10,6 +10,8 @@ license:             BSD3
 license-file:        LICENSE
 author:              Justus Adam
 maintainer:          dev@justus.science
+homepage:            https://github.com/JustusAdam/mustache
+bug-reports:         https://github.com/JustusAdam/mustache/issues
 -- copyright:
 category:            Development
 build-type:          Simple

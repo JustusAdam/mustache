@@ -1,3 +1,12 @@
+{-|
+Module      : $Header$
+Description : Basic functions for dealing with mustache templates.
+Copyright   : (c) Justus Adam, 2015
+License     : LGPL-3
+Maintainer  : dev@justus.science
+Stability   : experimental
+Portability : POSIX
+-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -17,11 +26,8 @@ module Text.Mustache.Parser
 
   -- * Parser
 
-  , Parser
+  , Parser, MustacheState
 
-  -- ** Components
-
-  , parseText
 
   -- * Mustache Constants
 
@@ -46,17 +52,20 @@ import           Text.Mustache.Types
 import           Text.Parsec                 as P hiding (endOfLine, parse)
 
 
+-- | Initial configuration for the parser
 data MustacheConf = MustacheConf
   { delimiters ∷ (String, String)
   }
 
 
+-- | User state for the parser
 data MustacheState = MustacheState
   { sDelimiters        ∷ (String, String)
   , textStack          ∷ Text
   , isBeginngingOfLine ∷ Bool
   , currentSectionName ∷ Maybe DataIdentifier
   }
+
 
 data ParseTagRes
   = SectionBegin Bool DataIdentifier
@@ -119,6 +128,11 @@ initState ∷ MustacheConf → MustacheState
 initState (MustacheConf { delimiters }) = emptyState { sDelimiters = delimiters }
 
 
+setIsBeginning ∷ Bool → Parser ()
+setIsBeginning b = modifyState (\s -> s { isBeginngingOfLine = b })
+
+
+-- | The parser monad in use
 type Parser = Parsec Text MustacheState
 
 
@@ -140,6 +154,7 @@ parse ∷ FilePath → Text → Either ParseError AST
 parse = parseWithConf defaultConf
 
 
+-- | Parse using a custom initial configuration
 parseWithConf ∷ MustacheConf → FilePath → Text → Either ParseError AST
 parseWithConf = P.runParser parseText ∘ initState
 
@@ -163,7 +178,7 @@ continueLine = do
 
   many (noneOf forbidden) ≫= appendTextStack
 
-  (try endOfLine ≫= appendTextStack ≫ modifyState (\s → s { isBeginngingOfLine = True }) ≫ parseLine)
+  (try endOfLine ≫= appendTextStack ≫ setIsBeginning True ≫ parseLine)
     <|> (try (string start) ≫ switchOnTag ≫= continueFromTag)
     <|> (try eof ≫ finishFile)
     <|> (anyChar ≫= appendTextStack ≫ continueLine)
@@ -194,11 +209,11 @@ parseLine = do
         tag ← switchOnTag
         let continueNoStandalone = do
               appendTextStack initialWhitespace
-              modifyState (\s → s { isBeginngingOfLine = False })
+              setIsBeginning False
               continueFromTag tag
             standaloneEnding = do
               try (skipMany (oneOf " \t") ≫ (eof <|> void endOfLine))
-              modifyState (\s → s { isBeginngingOfLine = True })
+              setIsBeginning True
         case tag of
           Tag (Partial _ name) →
             ( standaloneEnding ≫
@@ -211,7 +226,7 @@ parseLine = do
             ) <|> continueNoStandalone
   (try (string start) ≫ handleStandalone)
     <|> (try eof ≫ appendTextStack initialWhitespace ≫ finishFile)
-    <|> (appendTextStack initialWhitespace ≫ modifyState (\s → s { isBeginngingOfLine = False }) ≫ continueLine)
+    <|> (appendTextStack initialWhitespace ≫ setIsBeginning False ≫ continueLine)
 
 
 continueFromTag ∷ ParseTagRes → Parser AST

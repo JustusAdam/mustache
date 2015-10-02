@@ -265,8 +265,8 @@ testOfficialLangSpec dir = do
             it ("Name: " <> name <> "  Description: " <> specDescription) $
               let
                 compiled = do
-                  partials' <- HM.traverseWithKey parseTemplate testPartials
-                  template' <- parseTemplate name template
+                  partials' <- HM.traverseWithKey compileTemplate testPartials
+                  template' <- compileTemplate name template
                   return $ template' { partials = partials' }
               in
                 case compiled of

@@ -3,7 +3,7 @@ Module      : $Header$
 Description : Functions for rendering mustache templates.
 Copyright   : (c) Justus Adam, 2015
 License     : LGPL-3
-Maintainer  : development@justusadam.com
+Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
@@ -141,7 +141,12 @@ handleIndent (Just indentation) ast' = preface ⊕ content
           reverse $ fromMaybe [] (uncurry (:) ∘ first dropper <$> uncons (reverse fullIndented))
 
 
-search ∷ Context Value → [Text] → Maybe Value
+-- | Search for a key in the current context.
+--
+-- The search is conducted inside out mening the current focus
+-- is searched first. If the key is not found the outer scopes are recursively
+-- searched until the key is found, then 'innerSearch' is called on the result.
+search ∷ Context Value → [Key] → Maybe Value
 search _ [] = Nothing
 search (Context parents focus) val@(x:xs) =
   (
@@ -166,12 +171,15 @@ indentBy indent (TextBlock t) = TextBlock $ replace "\n" ("\n" ⊕ indent) t
 indentBy _ a = a
 
 
-innerSearch ∷ [Text] → Value → Maybe Value
+-- | Searches nested scopes navigating inward. Fails if it encunters something
+-- other than an object before the key is expended.
+innerSearch ∷ [Key] → Value → Maybe Value
 innerSearch []     v          = Just v
 innerSearch (y:ys) (Object o) = HM.lookup y o ≫= innerSearch ys
 innerSearch _      _          = Nothing
 
 
+-- | Converts values to Text as required by the mustache standard
 toString ∷ Value → Text
 toString (String t) = t
 toString (Number n) = either (pack ∘ show) (pack ∘ show) (floatingOrInteger n ∷ Either Double Integer)

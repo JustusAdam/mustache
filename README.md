@@ -4,6 +4,8 @@ Haskell implementation of [mustache templates][mustache-homepage].
 
 [mustache-homepage]: https://mustache.github.io
 
+Implements the official [specs version 1.1.3](https://github.com/mustache/spec/releases/tag/v1.1.3)
+
 ## Motivation
 
 The old Haskell implementation of mustache templates [hastache][] seemed pretty abandoned to me. This implementation aims to be much easier to use and (fingers crossed) better maintained.
@@ -16,7 +18,9 @@ Since it is so easy to use and requires but a few files of code, I've also writt
 
 ### Library
 
-... Soon™
+Please refer to the [documentation][] on hackage.
+
+[documentation]: https://hackage.haskell.org/package/mustache
 
 ### Executable `haskell-mustache`
 
@@ -31,7 +35,7 @@ Since it is so easy to use and requires but a few files of code, I've also writt
       -? --help                      Display help message
       -V --version                   Print version information
 
-Currenty substitutes the `TEMPLATE` once with each `DATA-FILE`
+Current implementation substitutes the `TEMPLATE` once with each `DATA-FILE`
 
 ## Roadmap
 
@@ -41,6 +45,6 @@ Currenty substitutes the `TEMPLATE` once with each `DATA-FILE`
 - [x] Support for 'set delimiter'
 - [x] More efficiency using `Text` rather than `String`
 - [x] More efficient Text parsing
-- [x] Test coverage by the official [specs](https://github.com/mustache/spec)
+- [x] Test coverage provided via the official [specs](https://github.com/mustache/spec)
 - [x] Haddock documentation
 - [ ] More instances for `ToMustache` typeclass
