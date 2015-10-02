@@ -23,7 +23,7 @@ module Text.Mustache.Types
   , Value(..)
   -- ** Converting
   , object
-  , (~>), (~=), (~~>), (~~=)
+  , (~>), (↝), (~=), (⥱), (~~>), (~↝), (~~=), (~⥱)
   , ToMustache, toMustache, toTextBlock, mFromJSON
   -- ** Representation
   , Array, Object
@@ -52,7 +52,7 @@ data Node α
   | Section DataIdentifier AST
   | InvertedSection DataIdentifier AST
   | Variable Bool DataIdentifier
-  | Partial FilePath
+  | Partial (Maybe (α, α)) FilePath
   deriving (Show, Eq)
 
 
@@ -157,22 +157,37 @@ instance ToMustache Aeson.Value where
   toMustache (Aeson.Number n) = Number n
   toMustache (Aeson.String s) = String s
   toMustache (Aeson.Bool   b) = Bool b
-  toMustache (Aeson.Null)     = Null
+  toMustache Aeson.Null       = Null
 
 instance (ToMustache α, ToMustache β) ⇒ ToMustache (α, β) where
   toMustache (a, b) = toMustache [toMustache a, toMustache b]
 
-instance (ToMustache α, ToMustache β, ToMustache γ) ⇒ ToMustache (α, β, γ) where
+instance (ToMustache α, ToMustache β, ToMustache γ)
+         ⇒ ToMustache (α, β, γ) where
   toMustache (a, b, c) = toMustache [toMustache a, toMustache b, toMustache c]
 
 instance (ToMustache α, ToMustache β, ToMustache γ, ToMustache δ)
          ⇒ ToMustache (α, β, γ, δ) where
-  toMustache (a, b, c, d) = toMustache [toMustache a, toMustache b, toMustache c, toMustache d]
+  toMustache (a, b, c, d) = toMustache
+    [ toMustache a
+    , toMustache b
+    , toMustache c
+    , toMustache d
+    ]
 
-instance (ToMustache α, ToMustache β, ToMustache γ, ToMustache δ, ToMustache ε)
-         ⇒ ToMustache (α, β, γ, δ, ε) where
+instance ( ToMustache α
+         , ToMustache β
+         , ToMustache γ
+         , ToMustache δ
+         , ToMustache ε
+         ) ⇒ ToMustache (α, β, γ, δ, ε) where
   toMustache (a, b, c, d, e) = toMustache
-    [toMustache a, toMustache b, toMustache c, toMustache d, toMustache e]
+    [ toMustache a
+    , toMustache b
+    , toMustache c
+    , toMustache d
+    , toMustache e
+    ]
 
 instance ( ToMustache α
          , ToMustache β
@@ -263,6 +278,11 @@ object = Object ∘ HM.fromList
 (~>) t = (t, ) ∘ toMustache
 
 
+-- | Unicode version of '~>'
+(↝) ∷ ToMustache ω ⇒ Text → ω → Pair
+(↝) = (~>)
+
+
 -- | Map keys to values that provide a 'ToJSON' instance
 --
 -- Recommended in conjunction with the `OverloadedStrings` extension.
@@ -270,14 +290,27 @@ object = Object ∘ HM.fromList
 (~=) t = (t ~>) ∘ Aeson.toJSON
 
 
+-- | Unicode version of '~='
+(⥱) ∷ Aeson.ToJSON ι ⇒ Text → ι → Pair
+(⥱) = (~=)
+
 -- | Conceptually similar to '~>' but uses arbitrary String-likes as keys.
 (~~>) ∷ (Conversion ζ Text, ToMustache ω) ⇒ ζ → ω → Pair
 (~~>) = (~>) ∘ convert
 
 
+-- | Unicde version of '~~>'
+(~↝) ∷ (Conversion ζ Text, ToMustache ω) ⇒ ζ → ω → Pair
+(~↝) = (~~>)
+
 -- | Conceptually similar to '~=' but uses arbitrary String-likes as keys.
 (~~=) ∷ (Conversion ζ Text, Aeson.ToJSON ι) ⇒ ζ → ι → Pair
 (~~=) = (~=) ∘ convert
+
+
+-- | Unicode version of '~~='
+(~⥱) ∷ (Conversion ζ Text, Aeson.ToJSON ι) ⇒ ζ → ι → Pair
+(~⥱) = (~~=)
 
 
 -- | Converts arbitrary String-likes to Values

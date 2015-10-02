@@ -31,23 +31,24 @@ module Text.Mustache.Parser
   ) where
 
 
+import           Control.Applicative.Unicode ((⊛))
 import           Control.Monad
 import           Control.Monad.Unicode
-import           Conversion            (Conversion, convert)
-import           Conversion.Text       ()
-import           Data.Char             (isAlphaNum, isSpace)
-import           Data.Foldable         (fold)
-import           Data.Functor          ((<$>))
-import           Data.List             (nub)
-import           Data.Maybe            (fromMaybe)
-import           Data.Monoid           (mempty, (<>))
+import           Conversion                  (Conversion, convert)
+import           Conversion.Text             ()
+import           Data.Char                   (isAlphaNum, isSpace)
+import           Data.Foldable               (fold)
+import           Data.Functor                ((<$>))
+import           Data.List                   (nub)
+import           Data.Maybe                  (fromMaybe)
+import           Data.Monoid                 (mempty, (<>))
 import           Data.Monoid.Unicode
-import           Data.Text             as T (Text, intercalate, null, pack,
-                                             unpack)
-import           Prelude               as Prel
+import           Data.Text                   as T (Text, intercalate, null,
+                                                   pack, unpack)
+import           Prelude                     as Prel
 import           Prelude.Unicode
 import           Text.Mustache.Types
-import           Text.Parsec           as P hiding (endOfLine, parse)
+import           Text.Parsec                 as P hiding (endOfLine, parse)
 
 
 data MustacheConf = MustacheConf
@@ -179,12 +180,12 @@ flushText = do
   putState $ s { textStack = (∅) }
   return $ if T.null text
               then []
-              else return $ TextBlock text
+              else [TextBlock text]
 
 
 finishFile ∷ Parser AST
 finishFile =
-  getState >>= \case
+  getState ≫= \case
     (MustacheState {currentSectionName = Nothing}) → flushText
     (MustacheState {currentSectionName = Just name}) →
       parserFail $ "Unclosed section " ⊕ show name
@@ -197,15 +198,19 @@ parseLine = do
   let handleStandalone = do
         tag ← switchOnTag
         let continueNoStandalone = appendTextStack initialWhitespace ≫ continueFromTag tag
+            standaloneEnding = try (skipMany (oneOf " \t")) ≫ (try eof <|> void (try endOfLine))
         case tag of
-          Tag _ → continueNoStandalone
-          _ →
+          Tag (Partial _ name) →
             ( do
               try (skipMany (oneOf " \t"))
-              try eof <|> void (try endOfLine)
+              lineEnd ← (try eof ≫ return []) <|> try endOfLine
+              continueFromTag (Tag (Partial (Just (pack initialWhitespace, pack lineEnd)) name))
+            ) <|> continueNoStandalone
+          Tag _ → continueNoStandalone
+          _     →
+            ( standaloneEnding ≫
               continueFromTag tag
-            )
-              <|> continueNoStandalone
+            ) <|> continueNoStandalone
   (try (string start) ≫ handleStandalone)
     <|> (try eof ≫ appendTextStack initialWhitespace ≫ finishFile)
     <|> (appendTextStack initialWhitespace ≫ continueLine)
@@ -251,7 +256,7 @@ switchOnTag = do
         <$> (try (char unescape1) ≫ genParseTagEnd mempty)
     , Tag ∘ Variable False
         <$> (try (char (fst unescape2)) ≫ genParseTagEnd (return $ snd unescape2))
-    , Tag ∘ Partial
+    , Tag ∘ Partial Nothing
         <$> (try (char partialBegin) ≫ spaces ≫ (noneOf (nub end) `manyTill` try (spaces ≫ string end)))
     , return HandledTag
         << (try (char delimiterChange) ≫ parseDelimChange)

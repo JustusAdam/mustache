@@ -21,16 +21,16 @@ module Text.Mustache.Render
 
 --
 import           Control.Applicative    ((<$>), (<|>))
+import           Control.Monad
 import           Control.Monad.Unicode
 import           Data.Foldable          (find, fold)
 import           Data.HashMap.Strict    as HM hiding (map)
-import           Data.Monoid            (mempty, (<>))
 import           Data.Monoid.Unicode
 import           Data.Scientific        (floatingOrInteger)
-import           Data.Text              hiding (concat, find, map, uncons)
-import qualified Data.Text              as T
+import           Data.Text              as T (Text, pack, replace, null)
 import           Data.Traversable       (traverse)
 import qualified Data.Vector            as V
+import           Prelude                hiding (lines, unlines)
 import           Prelude.Unicode
 import           Text.HTML.TagSoup      (escapeHTML)
 import           Text.Mustache.Internal
@@ -113,14 +113,23 @@ substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
         $ toString <$> search context varName
 
     -- substituting a partial
-    substitute' context (Partial pName) =
+    substitute' context (Partial indent pName) =
       maybe
         (∅)
-        (joinSubstituted (substitute' context) ∘ ast)
+        (joinSubstituted (substitute' context) ∘ handleIndent indent ∘ ast)
         $ HM.lookup pName cPartials
 
 
-search ∷ Context Value → [T.Text] → Maybe Value
+handleIndent ∷ Maybe (Text, Text) → AST → AST
+handleIndent Nothing ast' = ast'
+handleIndent (Just (indentation, ending)) ast' = preface ⊕ content ⊕ postface
+  where
+    preface = if T.null indentation then [] else [TextBlock indentation]
+    content = if T.null indentation then ast' else fmap (indentBy indentation) ast'
+    postface = if T.null ending then [] else [TextBlock ending]
+
+
+search ∷ Context Value → [Text] → Maybe Value
 search _ [] = Nothing
 search (Context parents focus) val@(x:xs) =
   (
@@ -136,8 +145,16 @@ search (Context parents focus) val@(x:xs) =
     ≫= innerSearch xs
 
 
+indentBy ∷ Text → Node Text → Node Text
+indentBy indent p@(Partial (Just (indent', ending)) name')
+  | T.null indent = p
+  | otherwise = Partial (Just (indent ⊕ indent', ending)) name'
+indentBy indent (Partial Nothing name') = Partial (Just (indent, (∅))) name'
+indentBy indent (TextBlock t) = TextBlock $ replace "\n" ("\n" ⊕ indent) t
+indentBy _ a = a
 
-innerSearch ∷ [T.Text] → Value → Maybe Value
+
+innerSearch ∷ [Text] → Value → Maybe Value
 innerSearch []     v          = Just v
 innerSearch (y:ys) (Object o) = HM.lookup y o ≫= innerSearch ys
 innerSearch _      _          = Nothing

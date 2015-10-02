@@ -109,8 +109,8 @@ getPartials = join ∘ fmap getPartials'
   Find partials in a single Node
 -}
 getPartials' ∷ Node Text → [FilePath]
-getPartials' (Partial         p  ) = return p
-getPartials' (Section         _ n) = getPartials n
+getPartials' (Partial _ p) = return p
+getPartials' (Section _ n) = getPartials n
 getPartials' (InvertedSection _ n) = getPartials n
 getPartials' _                     = (∅)
 

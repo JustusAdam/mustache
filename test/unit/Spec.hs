@@ -107,11 +107,11 @@ parserSpec =
 
     it "parses a partial" $
       lparse "{{>myPartial}}" `shouldBe`
-        returnedOne (Partial "myPartial")
+        returnedOne (Partial (Just ("", "")) "myPartial")
 
     it "parses a partial with whitespace" $
       lparse "{{>  myPartial }}" `shouldBe`
-        returnedOne (Partial "myPartial")
+        returnedOne (Partial (Just ("", "")) "myPartial")
 
     it "parses the an empty section" $
       lparse "{{#section}}{{/section}}" `shouldBe`
