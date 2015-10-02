@@ -21,12 +21,12 @@ tested-with:         GHC >=7.8 && <= 7.10.2
 source-repository head
   type:     git
   location: git://github.com/JustusAdam/mustache.git
---
--- source-repository this
---   type:     git
---   branch:   master
---   location: git://github.com/JustusAdam/mustache.git
---   tag:
+
+source-repository this
+  type:     git
+  branch:   master
+  location: git://github.com/JustusAdam/mustache.git
+  tag:      v1.0.0.0rc-0
 
 
 
