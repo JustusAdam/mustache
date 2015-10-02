@@ -77,6 +77,9 @@ typeclass. Alternatively, if your value to the right of the '~>' operator is
 not an instance of 'ToMustache' but an instance of 'ToJSON' you can use the
 '~=' operator, which accepts 'ToJSON' values.
 
+All operators are also provided in a unicode form, for those that, like me, enjoy
+unicode operators.
+
 == Manual compiling
 
 You can compile templates manually without requiring the IO monad at all using
