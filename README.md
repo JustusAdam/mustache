@@ -41,6 +41,6 @@ Currenty substitutes the `TEMPLATE` once with each `DATA-FILE`
 - [x] Support for 'set delimiter'
 - [x] More efficiency using `Text` rather than `String`
 - [x] More efficient Text parsing
-- [ ] Full unittest coverage (partially done)
+- [x] Test coverage by the official [specs](https://github.com/mustache/spec)
 - [x] Haddock documentation
 - [ ] More instances for `ToMustache` typeclass
