@@ -16,6 +16,7 @@ import           Data.Monoid          (mempty, (<>))
 import qualified Data.Text            as T
 import           Data.Yaml            as Y (FromJSON, Value (..), decodeFile,
                                             parseJSON, (.!=), (.:), (.:?))
+import           Debug.Trace          (traceShowId)
 import           System.Directory
 import           System.FilePath
 import           System.IO.Temp
@@ -24,7 +25,6 @@ import           Test.Hspec
 import           Text.Mustache
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
-import Debug.Trace (traceShowId)
 
 
 langspecDir = "spec-1.1.3"

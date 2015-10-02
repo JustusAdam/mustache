@@ -31,7 +31,6 @@ module Text.Mustache.Parser
   ) where
 
 
-import           Control.Applicative.Unicode ((⊛))
 import           Control.Monad
 import           Control.Monad.Unicode
 import           Conversion                  (Conversion, convert)
@@ -40,11 +39,9 @@ import           Data.Char                   (isAlphaNum, isSpace)
 import           Data.Foldable               (fold)
 import           Data.Functor                ((<$>))
 import           Data.List                   (nub)
-import           Data.Maybe                  (fromMaybe)
 import           Data.Monoid                 (mempty, (<>))
 import           Data.Monoid.Unicode
-import           Data.Text                   as T (Text, intercalate, null,
-                                                   pack, unpack)
+import           Data.Text                   as T (Text, null, pack)
 import           Prelude                     as Prel
 import           Prelude.Unicode
 import           Text.Mustache.Types
@@ -168,7 +165,7 @@ continueLine = do
 
   many (noneOf forbidden) ≫= appendTextStack
 
-  (try endOfLine ≫= appendTextStack ≫ modifyState (\s -> s { isBeginngingOfLine = True }) ≫ parseLine)
+  (try endOfLine ≫= appendTextStack ≫ modifyState (\s → s { isBeginngingOfLine = True }) ≫ parseLine)
     <|> (try (string start) ≫ switchOnTag ≫= continueFromTag)
     <|> (try eof ≫ finishFile)
     <|> (anyChar ≫= appendTextStack ≫ continueLine)
