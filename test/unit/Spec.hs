@@ -24,6 +24,7 @@ import           Test.Hspec
 import           Text.Mustache
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
+import Debug.Trace (traceShowId)
 
 
 langspecDir = "spec-1.1.3"
@@ -107,11 +108,11 @@ parserSpec =
 
     it "parses a partial" $
       lparse "{{>myPartial}}" `shouldBe`
-        returnedOne (Partial (Just ("", "")) "myPartial")
+        returnedOne (Partial (Just "") "myPartial")
 
     it "parses a partial with whitespace" $
       lparse "{{>  myPartial }}" `shouldBe`
-        returnedOne (Partial (Just ("", "")) "myPartial")
+        returnedOne (Partial (Just "") "myPartial")
 
     it "parses the an empty section" $
       lparse "{{#section}}{{/section}}" `shouldBe`

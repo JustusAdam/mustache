@@ -19,18 +19,20 @@ module Text.Mustache.Render
   , toString
   ) where
 
---
+
 import           Control.Applicative    ((<$>), (<|>))
+import Control.Arrow (first)
 import           Control.Monad
 import           Control.Monad.Unicode
 import           Data.Foldable          (find, fold)
 import           Data.HashMap.Strict    as HM hiding (map)
 import           Data.Monoid.Unicode
 import           Data.Scientific        (floatingOrInteger)
-import           Data.Text              as T (Text, pack, replace, null)
+import           Data.Text              as T (Text, pack, replace, null, dropEnd, length, stripSuffix, isSuffixOf)
+import Data.Maybe (fromMaybe)
 import           Data.Traversable       (traverse)
 import qualified Data.Vector            as V
-import           Prelude                hiding (lines, unlines)
+import           Prelude                hiding (lines, unlines, length)
 import           Prelude.Unicode
 import           Text.HTML.TagSoup      (escapeHTML)
 import           Text.Mustache.Internal
@@ -120,13 +122,23 @@ substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
         $ HM.lookup pName cPartials
 
 
-handleIndent ∷ Maybe (Text, Text) → AST → AST
+handleIndent ∷ Maybe Text → AST → AST
 handleIndent Nothing ast' = ast'
-handleIndent (Just (indentation, ending)) ast' = preface ⊕ content ⊕ postface
+handleIndent (Just indentation) ast' = preface ⊕ content
   where
     preface = if T.null indentation then [] else [TextBlock indentation]
-    content = if T.null indentation then ast' else fmap (indentBy indentation) ast'
-    postface = if T.null ending then [] else [TextBlock ending]
+    content = if T.null indentation
+      then ast'
+      else
+        let
+          fullIndented = fmap (indentBy indentation) ast'
+          dropper (TextBlock t) = TextBlock $
+            if ("\n" ⊕ indentation) `isSuffixOf` t
+              then fromMaybe t $ stripSuffix indentation t
+              else t
+          dropper a = a
+        in
+          reverse $ fromMaybe [] (uncurry (:) ∘ first dropper <$> uncons (reverse fullIndented))
 
 
 search ∷ Context Value → [Text] → Maybe Value
@@ -146,10 +158,10 @@ search (Context parents focus) val@(x:xs) =
 
 
 indentBy ∷ Text → Node Text → Node Text
-indentBy indent p@(Partial (Just (indent', ending)) name')
+indentBy indent p@(Partial (Just indent') name')
   | T.null indent = p
-  | otherwise = Partial (Just (indent ⊕ indent', ending)) name'
-indentBy indent (Partial Nothing name') = Partial (Just (indent, (∅))) name'
+  | otherwise = Partial (Just (indent ⊕ indent')) name'
+indentBy indent (Partial Nothing name') = Partial (Just indent) name'
 indentBy indent (TextBlock t) = TextBlock $ replace "\n" ("\n" ⊕ indent) t
 indentBy _ a = a
 

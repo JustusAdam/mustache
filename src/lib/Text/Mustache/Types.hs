@@ -52,7 +52,7 @@ data Node α
   | Section DataIdentifier AST
   | InvertedSection DataIdentifier AST
   | Variable Bool DataIdentifier
-  | Partial (Maybe (α, α)) FilePath
+  | Partial (Maybe α) FilePath
   deriving (Show, Eq)
 
 

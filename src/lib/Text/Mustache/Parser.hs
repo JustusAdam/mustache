@@ -168,7 +168,7 @@ continueLine = do
 
   many (noneOf forbidden) ≫= appendTextStack
 
-  (try endOfLine ≫= appendTextStack ≫ parseLine)
+  (try endOfLine ≫= appendTextStack ≫ modifyState (\s -> s { isBeginngingOfLine = True }) ≫ parseLine)
     <|> (try (string start) ≫ switchOnTag ≫= continueFromTag)
     <|> (try eof ≫ finishFile)
     <|> (anyChar ≫= appendTextStack ≫ continueLine)
@@ -197,14 +197,17 @@ parseLine = do
   initialWhitespace ← many (oneOf " \t")
   let handleStandalone = do
         tag ← switchOnTag
-        let continueNoStandalone = appendTextStack initialWhitespace ≫ continueFromTag tag
-            standaloneEnding = try (skipMany (oneOf " \t")) ≫ (try eof <|> void (try endOfLine))
+        let continueNoStandalone = do
+              appendTextStack initialWhitespace
+              modifyState (\s → s { isBeginngingOfLine = False })
+              continueFromTag tag
+            standaloneEnding = do
+              try (skipMany (oneOf " \t") ≫ (eof <|> void endOfLine))
+              modifyState (\s → s { isBeginngingOfLine = True })
         case tag of
           Tag (Partial _ name) →
-            ( do
-              try (skipMany (oneOf " \t"))
-              lineEnd ← (try eof ≫ return []) <|> try endOfLine
-              continueFromTag (Tag (Partial (Just (pack initialWhitespace, pack lineEnd)) name))
+            ( standaloneEnding ≫
+              continueFromTag (Tag (Partial (Just (pack initialWhitespace)) name))
             ) <|> continueNoStandalone
           Tag _ → continueNoStandalone
           _     →
@@ -213,7 +216,7 @@ parseLine = do
             ) <|> continueNoStandalone
   (try (string start) ≫ handleStandalone)
     <|> (try eof ≫ appendTextStack initialWhitespace ≫ finishFile)
-    <|> (appendTextStack initialWhitespace ≫ continueLine)
+    <|> (appendTextStack initialWhitespace ≫ modifyState (\s → s { isBeginngingOfLine = False }) ≫ continueLine)
 
 
 continueFromTag ∷ ParseTagRes → Parser AST
@@ -241,7 +244,7 @@ continueFromTag (Tag tag) = do
   textNodes    ← flushText
   furtherNodes ← parseText
   return $ textNodes ⊕ return tag ⊕ furtherNodes
-continueFromTag HandledTag = continueLine
+continueFromTag HandledTag = parseText
 
 
 switchOnTag ∷ Parser ParseTagRes
