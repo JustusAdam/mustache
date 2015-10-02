@@ -6,9 +6,11 @@
 module Main where
 
 
+import           Control.Applicative  ((<$>), (<*>))
 import           Control.Monad
 import           Data.Either
-import           Data.Foldable
+import           Data.Foldable        (for_)
+import           Data.Function        ((&))
 import qualified Data.HashMap.Strict  as HM (HashMap, elems, empty, lookup,
                                              traverseWithKey)
 import           Data.List
@@ -245,9 +247,10 @@ getOfficialSpecRelease tempdir = do
 testOfficialLangSpec ∷ FilePath → Spec
 testOfficialLangSpec dir = do
   allFiles ← runIO $ getDirectoryContents dir
-  let testfiles' = filter ((`elem` [".yml", ".yaml"]) . takeExtension) allFiles
+  let testfiles = allFiles
+        & filter ((`elem` [".yml", ".yaml"]) . takeExtension)
       -- Filters the lambda tests for now.
-      testfiles = filter (not . ("~" `isPrefixOf`) . takeFileName) testfiles'
+        & filter (not . ("~" `isPrefixOf`) . takeFileName)
   for_ testfiles $ \filename →
     runIO (decodeFile (dir </> filename)) >>= \case
       Nothing -> describe ("File: " <> takeFileName filename) $
