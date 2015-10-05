@@ -61,8 +61,6 @@ library
   default-language:    Haskell2010
   ghc-options:
     -Wall
-    -optP-include
-    -optPdist/build/autogen/cabal_macros.h
 
 
 executable haskell-mustache
