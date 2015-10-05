@@ -63,8 +63,8 @@ by allowing you to define conversions using a typeclass and operators.
 
   instance ToMustache Person where
     toMustache person = object
-      [ "age" ~> age
-      , "name" ~> name
+      [ "age" ~> age person
+      , "name" ~> name person
       ]
 @
 
