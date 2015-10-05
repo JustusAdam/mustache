@@ -45,7 +45,7 @@ import           Text.Mustache.Types
 
   Equivalent to @substituteValue . toMustache@.
 -}
-substitute ∷ ToMustache j ⇒ Template → j → Text
+substitute ∷ ToMustache κ ⇒ Template → κ → Text
 substitute t = substituteValue t ∘ toMustache
 
 

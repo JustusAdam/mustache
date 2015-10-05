@@ -28,7 +28,6 @@ module Text.Mustache.Parser
 
   , Parser, MustacheState
 
-
   -- * Mustache Constants
 
   , sectionBegin, sectionEnd, invertedSectionBegin, unescape2, unescape1
@@ -173,8 +172,8 @@ appendTextStack t = modifyState (\s → s { textStack = textStack s ⊕ convert 
 
 continueLine ∷ Parser AST
 continueLine = do
-  (MustacheState { sDelimiters = ( start, _ )}) ← getState
-  let forbidden = head start : "\n\r"
+  (MustacheState { sDelimiters = ( start@(x:_), _ )}) ← getState
+  let forbidden = x : "\n\r"
 
   many (noneOf forbidden) ≫= appendTextStack
 

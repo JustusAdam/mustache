@@ -10,7 +10,7 @@ Portability : POSIX
 {-# LANGUAGE UnicodeSyntax #-}
 module Text.Mustache.Compile
   ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
-  , compileTemplate, cacheFromList, getPartials
+  , compileTemplate, cacheFromList, getPartials, getFile
   ) where
 
 

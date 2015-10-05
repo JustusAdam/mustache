@@ -37,6 +37,8 @@ import           Conversion
 import           Conversion.Text     ()
 import qualified Data.Aeson          as Aeson
 import           Data.HashMap.Strict as HM
+import qualified Data.HashSet        as HS
+import qualified Data.Map            as Map
 import           Data.Scientific
 import           Data.Text
 import qualified Data.Text.Lazy      as LT
@@ -88,7 +90,7 @@ data Value
 
 
 instance Show Value where
-  show (Lambda _) = "Lambda Context Value → AST → Either String AST"
+  show (Lambda _) = "Lambda function"
   show (Object o) = show o
   show (Array  a) = show a
   show (String s) = show s
@@ -98,6 +100,9 @@ instance Show Value where
 
 
 -- | Conversion class
+--
+-- Note that some instances of this class overlap delierately to provide
+-- maximum flexibility instances while preserving maximum efficiency.
 class ToMustache ω where
   toMustache ∷ ω → Value
 
@@ -106,7 +111,7 @@ instance ToMustache Value where
   toMustache = id
 
 instance ToMustache [Char] where
-  toMustache = String ∘ pack
+  toMustache = toMustache ∘ pack
 
 instance ToMustache Bool where
   toMustache = Bool
@@ -129,32 +134,59 @@ instance ToMustache Scientific where
 instance ToMustache ω ⇒ ToMustache [ω] where
   toMustache = Array ∘ V.fromList ∘ fmap toMustache
 
+instance {-# OVERLAPPING #-} ToMustache (V.Vector Value) where
+  toMustache = Array
+
 instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
-  toMustache = Array ∘ fmap toMustache
+  toMustache = toMustache ∘ fmap toMustache
+
+instance {-# OVERLAPPING #-} ToMustache (HM.HashMap Text Value) where
+  toMustache = Object
+
+instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (Map.Map θ ω) where
+  toMustache =
+    toMustache
+    ∘ Map.foldrWithKey
+      (\k → HM.insert (convert k ∷ Text) ∘ toMustache)
+      HM.empty
 
 instance ToMustache ω ⇒ ToMustache (HM.HashMap Text ω) where
-  toMustache = Object ∘ fmap toMustache
+  toMustache = toMustache ∘ fmap toMustache
+
+instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (HM.HashMap θ ω) where
+  toMustache =
+    toMustache
+    ∘ HM.foldrWithKey
+      (\k → HM.insert (convert k ∷ Text) ∘ toMustache)
+      HM.empty
 
 instance ToMustache (Context Value → AST → AST) where
   toMustache = Lambda
 
 instance ToMustache (Context Value → AST → Text) where
-  toMustache f = Lambda wrapper
-    where wrapper c lAST = return ∘ TextBlock $ f c lAST
-
-instance ToMustache (Context Value → AST → String) where
   toMustache f = toMustache wrapper
-    where wrapper c = pack ∘ f c
+    where
+      wrapper ∷ Context Value → AST → AST
+      wrapper c lAST = return ∘ TextBlock $ f c lAST
+
+instance {-# OVERLAPPABLE #-} Conversion θ Text
+  ⇒ ToMustache (Context Value → AST → θ) where
+  toMustache f = toMustache wrapper
+    where
+      wrapper :: Context Value → AST → Text
+      wrapper c = convert ∘ f c
 
 instance ToMustache (AST → AST) where
-  toMustache f = Lambda $ const f
+  toMustache f = toMustache (const f ∷ Context Value → AST → AST)
 
 instance ToMustache (AST → Text) where
-  toMustache f = Lambda wrapper
-    where wrapper _ = (return ∘ TextBlock) ∘ f
+  toMustache f = toMustache wrapper
+    where
+      wrapper ∷ Context Value → AST → AST
+      wrapper _ = (return ∘ TextBlock) ∘ f
 
-instance ToMustache (AST → String) where
-  toMustache f = toMustache (pack ∘ f)
+instance {-# OVERLAPPABLE #-} Conversion θ Text ⇒ ToMustache (AST → θ) where
+  toMustache f = toMustache (convert ∘ f ∷ AST → Text)
 
 instance ToMustache Aeson.Value where
   toMustache (Aeson.Object o) = Object $ fmap toMustache o
@@ -163,6 +195,9 @@ instance ToMustache Aeson.Value where
   toMustache (Aeson.String s) = String s
   toMustache (Aeson.Bool   b) = Bool b
   toMustache Aeson.Null       = Null
+
+instance ToMustache ω ⇒ ToMustache (HS.HashSet ω) where
+  toMustache = toMustache ∘ HS.toList
 
 instance (ToMustache α, ToMustache β) ⇒ ToMustache (α, β) where
   toMustache (a, b) = toMustache [toMustache a, toMustache b]
@@ -269,9 +304,10 @@ instance ( ToMustache α
 --       ]
 -- @
 --
--- Here we can see that we can use the '~>' operator for values that have themselves
--- a 'ToMustache' instance, or alternatively if they lack such an instance but provide
--- an instance for the 'ToJSON' typeclass we can use the '~=' operator.
+-- Here we can see that we can use the '~>' operator for values that have
+-- themselves a 'ToMustache' instance, or alternatively if they lack such an
+-- instance but provide an instance for the 'ToJSON' typeclass we can use the
+-- '~=' operator.
 object ∷ [Pair] → Value
 object = Object ∘ HM.fromList
 
