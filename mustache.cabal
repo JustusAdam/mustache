@@ -39,7 +39,7 @@ library
                        Text.Mustache.Compile,
                        Text.Mustache.Render
   other-modules:       Text.Mustache.Internal
-  other-extensions:    NamedFieldPuns, OverloadedStrings, LambdaCase, TupleSections, CPP
+  other-extensions:    NamedFieldPuns, OverloadedStrings, LambdaCase, TupleSections
   build-depends:       base >=4.7 && <5,
                        text >=1.2 && <1.3,
                        parsec >=3.1 && <3.2,

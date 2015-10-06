@@ -7,7 +7,6 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
-{-# LANGUAGE CPP           #-}
 {-# LANGUAGE UnicodeSyntax #-}
 module Text.Mustache.Internal (uncons) where
 
