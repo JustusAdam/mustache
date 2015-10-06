@@ -134,14 +134,19 @@ instance ToMustache Scientific where
 instance ToMustache ω ⇒ ToMustache [ω] where
   toMustache = Array ∘ V.fromList ∘ fmap toMustache
 
-instance {-# OVERLAPPING #-} ToMustache (V.Vector Value) where
-  toMustache = Array
+-- TODO Add these back in when you find a way to do so on earlier GHC versions
+-- or you drop support for GHC < 7.10
+-- instance {-# OVERLAPPING #-} ToMustache (V.Vector Value) where
+--   toMustache = Array
 
 instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
   toMustache = toMustache ∘ fmap toMustache
 
-instance {-# OVERLAPPING #-} ToMustache (HM.HashMap Text Value) where
-  toMustache = Object
+-- TODO Add these back in when you find a way to do so on earlier GHC versions
+-- or you drop support for GHC < 7.10
+-- instance {-# OVERLAPPING #-} ToMustache (HM.HashMap Text Value) where
+--   toMustache = Object
+
 
 instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (Map.Map θ ω) where
   toMustache =
@@ -153,12 +158,14 @@ instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (Map.Map θ ω) wher
 instance ToMustache ω ⇒ ToMustache (HM.HashMap Text ω) where
   toMustache = toMustache ∘ fmap toMustache
 
-instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (HM.HashMap θ ω) where
-  toMustache =
-    toMustache
-    ∘ HM.foldrWithKey
-      (\k → HM.insert (convert k ∷ Text) ∘ toMustache)
-      HM.empty
+  -- TODO Add these back in when you find a way to do so on earlier GHC versions
+  -- or you drop support for GHC < 7.10
+-- instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (HM.HashMap θ ω) where
+--   toMustache =
+--     toMustache
+--     ∘ HM.foldrWithKey
+--       (\k → HM.insert (convert k ∷ Text) ∘ toMustache)
+--       HM.empty
 
 instance ToMustache (Context Value → AST → AST) where
   toMustache = Lambda
@@ -169,12 +176,14 @@ instance ToMustache (Context Value → AST → Text) where
       wrapper ∷ Context Value → AST → AST
       wrapper c lAST = return ∘ TextBlock $ f c lAST
 
-instance {-# OVERLAPPABLE #-} Conversion θ Text
-  ⇒ ToMustache (Context Value → AST → θ) where
-  toMustache f = toMustache wrapper
-    where
-      wrapper :: Context Value → AST → Text
-      wrapper c = convert ∘ f c
+-- TODO Add these back in when you find a way to do so on earlier GHC versions
+-- or you drop support for GHC < 7.10
+-- instance {-# OVERLAPPABLE #-} Conversion θ Text
+--   ⇒ ToMustache (Context Value → AST → θ) where
+--   toMustache f = toMustache wrapper
+--     where
+--       wrapper :: Context Value → AST → Text
+--       wrapper c = convert ∘ f c
 
 instance ToMustache (AST → AST) where
   toMustache f = toMustache (const f ∷ Context Value → AST → AST)
@@ -185,8 +194,10 @@ instance ToMustache (AST → Text) where
       wrapper ∷ Context Value → AST → AST
       wrapper _ = (return ∘ TextBlock) ∘ f
 
-instance {-# OVERLAPPABLE #-} Conversion θ Text ⇒ ToMustache (AST → θ) where
-  toMustache f = toMustache (convert ∘ f ∷ AST → Text)
+-- TODO Add these back in when you find a way to do so on earlier GHC versions
+-- or you drop support for GHC < 7.10
+-- instance {-# OVERLAPPABLE #-} Conversion θ Text ⇒ ToMustache (AST → θ) where
+--   toMustache f = toMustache (convert ∘ f ∷ AST → Text)
 
 instance ToMustache Aeson.Value where
   toMustache (Aeson.Object o) = Object $ fmap toMustache o
