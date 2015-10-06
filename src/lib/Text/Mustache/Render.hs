@@ -148,19 +148,18 @@ handleIndent (Just indentation) ast' = preface ⊕ content
 -- searched until the key is found, then 'innerSearch' is called on the result.
 search ∷ Context Value → [Key] → Maybe Value
 search _ [] = Nothing
-search (Context parents focus) val@(x:xs) =
-  (
+search ctx keys@(_:nextKeys) = go ctx keys ≫= innerSearch nextKeys
+  where 
+  go _ [] = Nothing
+  go (Context parents focus) val@(x:_) = 
     ( case focus of
       (Object o) → HM.lookup x o
       _          → Nothing
     )
     <|> ( do
           (newFocus, newParents) ← uncons parents
-          search (Context newParents newFocus) val
+          go (Context newParents newFocus) val
         )
-  )
-    ≫= innerSearch xs
-
 
 indentBy ∷ Text → Node Text → Node Text
 indentBy indent p@(Partial (Just indent') name')
