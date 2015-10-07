@@ -12,6 +12,7 @@ import           Test.Hspec
 import           Text.Mustache
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
+import           Data.Monoid
 
 
 parserSpec :: Spec
