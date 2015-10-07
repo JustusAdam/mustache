@@ -15,6 +15,12 @@ import           Text.Mustache.Types
 import           Data.Monoid
 
 
+escaped ∷ Bool
+escaped = True
+unescaped ∷ Bool
+unescaped = False
+
+
 parserSpec :: Spec
 parserSpec =
   describe "mustacheParser" $ do
@@ -27,10 +33,10 @@ parserSpec =
       lparse text `shouldBe` returnedOne (TextBlock text)
 
     it "parses a variable" $
-      lparse "{{name}}" `shouldBe` returnedOne (Variable True (NamedData ["name"]))
+      lparse "{{name}}" `shouldBe` returnedOne (Variable escaped (NamedData ["name"]))
 
     it "parses a variable with whitespace" $
-      lparse "{{ name  }}" `shouldBe` returnedOne (Variable True (NamedData ["name"]))
+      lparse "{{ name  }}" `shouldBe` returnedOne (Variable escaped (NamedData ["name"]))
 
     it "allows '-' in variable names" $
       lparse "{{ name-name }}" `shouldBe`
@@ -41,14 +47,14 @@ parserSpec =
         returnedOne (Variable True (NamedData ["name_name"]))
 
     it "parses a variable unescaped with {{{}}}" $
-      lparse "{{{name}}}" `shouldBe` returnedOne (Variable False (NamedData ["name"]))
+      lparse "{{{name}}}" `shouldBe` returnedOne (Variable unescaped (NamedData ["name"]))
 
     it "parses a variable unescaped with {{{}}} with whitespace" $
       lparse "{{{  name     }}}" `shouldBe`
         returnedOne (Variable False (NamedData ["name"]))
 
     it "parses a variable unescaped with &" $
-      lparse "{{&name}}" `shouldBe` returnedOne (Variable False (NamedData ["name"]))
+      lparse "{{&name}}" `shouldBe` returnedOne (Variable unescaped (NamedData ["name"]))
 
     it "parses a variable unescaped with & with whitespace" $
       lparse "{{&  name  }}" `shouldBe`
@@ -84,16 +90,16 @@ parserSpec =
 
     it "propagates a delimiter change from a nested scope" $
       lparse "{{#section}}{{=<< >>=}}<</section>><<var>>" `shouldBe`
-        return [Section (NamedData ["section"]) [], Variable True (NamedData ["var"])]
+        return [Section (NamedData ["section"]) [], Variable escaped (NamedData ["var"])]
 
     it "fails if the tag contains illegal characters" $
       lparse "{{#&}}" `shouldSatisfy` isLeft
 
     it "parses a nested variable" $
-      lparse "{{ name.val }}" `shouldBe` returnedOne (Variable True (NamedData ["name", "val"]))
+      lparse "{{ name.val }}" `shouldBe` returnedOne (Variable escaped (NamedData ["name", "val"]))
 
     it "parses a variable containing whitespace" $
-      lparse "{{ val space }}" `shouldBe` returnedOne (Variable True (NamedData ["val space"]))
+      lparse "{{ val space }}" `shouldBe` returnedOne (Variable escaped (NamedData ["val space"]))
 
 
 substituteSpec :: Spec
@@ -104,13 +110,13 @@ substituteSpec =
 
     it "substitutes a html escaped value for a variable" $
       substitute
-        (toTemplate [Variable True (NamedData ["name"])])
+        (toTemplate [Variable escaped (NamedData ["name"])])
         (object ["name" ~> ("<tag>" :: T.Text)])
       `shouldBe` "&lt;tag&gt;"
 
     it "substitutes raw value for an unescaped variable" $
       substitute
-        (toTemplate [Variable False (NamedData ["name"])])
+        (toTemplate [Variable unescaped (NamedData ["name"])])
         (object ["name" ~> ("<tag>" :: T.Text)])
       `shouldBe` "<tag>"
 
@@ -141,7 +147,7 @@ substituteSpec =
     it "substitutes a section twice when the key is present and a list with two\
     \ objects, changing the scope to each object" $
       substitute
-        (toTemplate [Section (NamedData ["section"]) [Variable True (NamedData ["t"])]])
+        (toTemplate [Section (NamedData ["section"]) [Variable escaped (NamedData ["t"])]])
         (object
           [ "section" ~>
             [ object ["t" ~> ("var1" :: T.Text)]
@@ -170,7 +176,7 @@ substituteSpec =
 
     it "substitutes a nested section" $
       substitute
-        (toTemplate [Variable True (NamedData ["outer", "inner"])])
+        (toTemplate [Variable escaped (NamedData ["outer", "inner"])])
         (object
           [ "outer" ~> object ["inner" ~> ("success" :: T.Text)]
           , "inner" ~> ("error" :: T.Text)
