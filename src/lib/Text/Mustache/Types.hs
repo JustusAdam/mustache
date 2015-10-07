@@ -76,7 +76,7 @@ type Pair   = (Text, Value)
 
 -- | Representation of stateful context for the substitution process
 data Context α = Context [α] α
-  deriving Show
+  deriving (Eq, Show, Ord)
 
 -- | Internal value AST
 data Value
