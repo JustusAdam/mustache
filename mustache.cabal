@@ -1,5 +1,5 @@
 name:                mustache
-version:             0.3.0.0
+version:             0.3.0.1
 synopsis:            A mustache template parser library.
 description:
   Allows parsing and rendering template files with mustache markup. See the
@@ -17,7 +17,7 @@ category:            Development
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
-tested-with:         GHC >=7.8 && <= 7.10.2
+tested-with:         GHC >=7.10 && <= 7.10.2
 
 
 source-repository head

@@ -110,7 +110,7 @@ class ToMustache ω where
 instance ToMustache Value where
   toMustache = id
 
-instance ToMustache [Char] where
+instance {-# OVERLAPPING #-} ToMustache [Char] where
   toMustache = toMustache ∘ pack
 
 instance ToMustache Bool where
@@ -131,22 +131,17 @@ instance ToMustache LT.Text where
 instance ToMustache Scientific where
   toMustache = Number
 
-instance ToMustache ω ⇒ ToMustache [ω] where
+instance {-# OVERLAPPABLE #-} ToMustache ω ⇒ ToMustache [ω] where
   toMustache = Array ∘ V.fromList ∘ fmap toMustache
 
--- TODO Add these back in when you find a way to do so on earlier GHC versions
--- or you drop support for GHC < 7.10
--- instance {-# OVERLAPPING #-} ToMustache (V.Vector Value) where
---   toMustache = Array
+instance {-# OVERLAPPING #-} ToMustache (V.Vector Value) where
+  toMustache = Array
 
 instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
   toMustache = toMustache ∘ fmap toMustache
 
--- TODO Add these back in when you find a way to do so on earlier GHC versions
--- or you drop support for GHC < 7.10
--- instance {-# OVERLAPPING #-} ToMustache (HM.HashMap Text Value) where
---   toMustache = Object
-
+instance {-# OVERLAPPING #-} ToMustache (HM.HashMap Text Value) where
+  toMustache = Object
 
 instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (Map.Map θ ω) where
   toMustache =
@@ -158,14 +153,12 @@ instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (Map.Map θ ω) wher
 instance ToMustache ω ⇒ ToMustache (HM.HashMap Text ω) where
   toMustache = toMustache ∘ fmap toMustache
 
-  -- TODO Add these back in when you find a way to do so on earlier GHC versions
-  -- or you drop support for GHC < 7.10
--- instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (HM.HashMap θ ω) where
---   toMustache =
---     toMustache
---     ∘ HM.foldrWithKey
---       (\k → HM.insert (convert k ∷ Text) ∘ toMustache)
---       HM.empty
+instance {-# OVERLAPPABLE #-} (Conversion θ Text, ToMustache ω) ⇒ ToMustache (HM.HashMap θ ω) where
+  toMustache =
+    toMustache
+    ∘ HM.foldrWithKey
+      (\k → HM.insert (convert k ∷ Text) ∘ toMustache)
+      HM.empty
 
 instance ToMustache (Context Value → AST → AST) where
   toMustache = Lambda
@@ -176,14 +169,12 @@ instance ToMustache (Context Value → AST → Text) where
       wrapper ∷ Context Value → AST → AST
       wrapper c lAST = return ∘ TextBlock $ f c lAST
 
--- TODO Add these back in when you find a way to do so on earlier GHC versions
--- or you drop support for GHC < 7.10
--- instance {-# OVERLAPPABLE #-} Conversion θ Text
---   ⇒ ToMustache (Context Value → AST → θ) where
---   toMustache f = toMustache wrapper
---     where
---       wrapper :: Context Value → AST → Text
---       wrapper c = convert ∘ f c
+instance {-# OVERLAPPABLE #-} Conversion θ Text
+  ⇒ ToMustache (Context Value → AST → θ) where
+  toMustache f = toMustache wrapper
+    where
+      wrapper :: Context Value → AST → Text
+      wrapper c = convert ∘ f c
 
 instance ToMustache (AST → AST) where
   toMustache f = toMustache (const f ∷ Context Value → AST → AST)
