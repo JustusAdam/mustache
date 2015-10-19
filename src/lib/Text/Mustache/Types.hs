@@ -106,7 +106,6 @@ instance Show Value where
 class ToMustache ω where
   toMustache ∷ ω → Value
 
-
 instance ToMustache Value where
   toMustache = id
 
@@ -319,11 +318,13 @@ object = Object ∘ HM.fromList
 -- Recommended in conjunction with the `OverloadedStrings` extension.
 (~>) ∷ ToMustache ω ⇒ Text → ω → Pair
 (~>) t = (t, ) ∘ toMustache
+{-# INLINEABLE (~>) #-}
 infixr 8 ~>
 
 -- | Unicode version of '~>'
 (↝) ∷ ToMustache ω ⇒ Text → ω → Pair
 (↝) = (~>)
+{-# INLINEABLE (↝) #-}
 infixr 8 ↝
 
 
@@ -332,36 +333,42 @@ infixr 8 ↝
 -- Recommended in conjunction with the `OverloadedStrings` extension.
 (~=) ∷ Aeson.ToJSON ι ⇒ Text → ι → Pair
 (~=) t = (t ~>) ∘ Aeson.toJSON
+{-# INLINEABLE (~=) #-}
 infixr 8 ~=
 
 
 -- | Unicode version of '~='
 (⥱) ∷ Aeson.ToJSON ι ⇒ Text → ι → Pair
 (⥱) = (~=)
+{-# INLINEABLE (⥱) #-}
 infixr 8 ⥱
 
 
 -- | Conceptually similar to '~>' but uses arbitrary String-likes as keys.
 (~~>) ∷ (Conversion ζ Text, ToMustache ω) ⇒ ζ → ω → Pair
 (~~>) = (~>) ∘ convert
+{-# INLINEABLE (~~>) #-}
 infixr 8 ~~>
 
 
 -- | Unicde version of '~~>'
 (~↝) ∷ (Conversion ζ Text, ToMustache ω) ⇒ ζ → ω → Pair
 (~↝) = (~~>)
+{-# INLINEABLE (~↝) #-}
 infixr 8 ~↝
 
 
 -- | Conceptually similar to '~=' but uses arbitrary String-likes as keys.
 (~~=) ∷ (Conversion ζ Text, Aeson.ToJSON ι) ⇒ ζ → ι → Pair
 (~~=) = (~=) ∘ convert
+{-# INLINEABLE (~~=) #-}
 infixr 8 ~~=
 
 
 -- | Unicode version of '~~='
 (~⥱) ∷ (Conversion ζ Text, Aeson.ToJSON ι) ⇒ ζ → ι → Pair
 (~⥱) = (~~=)
+{-# INLINEABLE (~⥱) #-}
 infixr 8 ~⥱
 
 

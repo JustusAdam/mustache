@@ -8,7 +8,7 @@ description:
   Implements the mustache spec version 1.1.3
 
   This library requires GHC >= 7.10 because it uses the new overlapping instances
-  to provide eficcient and versatile conversion of custom data types into mustache
+  to provide efficient and versatile conversion of custom data types into mustache
   Values.
 license:             BSD3
 license-file:        LICENSE
