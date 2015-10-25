@@ -107,7 +107,7 @@ class ToMustache ω where
 instance ToMustache Value where
   toMustache = id
 
-instance {-# OVERLAPPING #-} ToMustache [Char] where
+instance ToMustache [Char] where
   toMustache = toMustache ∘ pack
 
 instance ToMustache Bool where
