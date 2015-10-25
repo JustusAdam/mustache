@@ -71,8 +71,7 @@ operators and convenience functions.
 @
 
 The values to the left of the '~>' operator has to be of type 'Text', hence the
-@OverloadedStrings@ can becomes very handy here. Alternatively the '~~>' operator
-can be used, which accepts an arbitrary string-like, converting it to text.
+@OverloadedStrings@ can becomes very handy here.
 
 Values to the right of the '~>' operator must be an instance of the 'ToMustache'
 typeclass. Alternatively, if your value to the right of the '~>' operator is
@@ -173,7 +172,7 @@ module Text.Mustache
   , substituteValue
 
   -- ** Data Conversion
-  , ToMustache, toMustache, object, (~>), (~=), (~~>), (~~=)
+  , ToMustache, toMustache, object, (~>), (~=)
   ) where
 
 

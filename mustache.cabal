@@ -57,8 +57,6 @@ library
                        directory,
                        filepath,
                        scientific,
-                       conversion >= 1.2,
-                       conversion-text,
                        base-unicode-symbols,
                        ja-base-extra >= 0.2.1,
                        containers

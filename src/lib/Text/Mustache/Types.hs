@@ -24,8 +24,8 @@ module Text.Mustache.Types
   , Key
   -- ** Converting
   , object
-  , (~>), (↝), (~=), (⥱), (~~>), (~↝), (~~=), (~⥱)
-  , ToMustache, toMustache, toTextBlock, mFromJSON
+  , (~>), (↝), (~=), (⥱)
+  , ToMustache, toMustache, mFromJSON
   -- ** Representation
   , Array, Object, Pair
   , Context(..)
@@ -33,8 +33,6 @@ module Text.Mustache.Types
   ) where
 
 
-import           Conversion
-import           Conversion.Text     ()
 import qualified Data.Aeson          as Aeson
 import           Data.HashMap.Strict as HM
 import qualified Data.HashSet        as HS
@@ -115,9 +113,6 @@ instance {-# OVERLAPPING #-} ToMustache [Char] where
 instance ToMustache Bool where
   toMustache = Bool
 
-instance ToMustache Char where
-  toMustache = String ∘ pack ∘ return
-
 instance ToMustache () where
   toMustache = const Null
 
@@ -130,33 +125,34 @@ instance ToMustache LT.Text where
 instance ToMustache Scientific where
   toMustache = Number
 
-instance {-# OVERLAPPABLE #-} ToMustache ω ⇒ ToMustache [ω] where
+instance ToMustache ω ⇒ ToMustache [ω] where
   toMustache = Array ∘ V.fromList ∘ fmap toMustache
-
-instance {-# OVERLAPPING #-} ToMustache (V.Vector Value) where
-  toMustache = Array
 
 instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
   toMustache = toMustache ∘ fmap toMustache
 
-instance {-# OVERLAPPING #-} ToMustache (HM.HashMap Text Value) where
-  toMustache = Object
-
-instance (Conversion θ Text, ToMustache ω) ⇒ ToMustache (Map.Map θ ω) where
+instance ToMustache ω ⇒ ToMustache (Map.Map Text ω) where
   toMustache =
     toMustache
     ∘ Map.foldrWithKey
-      (\k → HM.insert (convert k ∷ Text) ∘ toMustache)
+      (\k → HM.insert k ∘ toMustache)
+      HM.empty
+
+instance ToMustache ω ⇒ ToMustache (Map.Map String ω) where
+  toMustache =
+    toMustache
+    ∘ Map.foldrWithKey
+      (\k → HM.insert (pack k) ∘ toMustache)
       HM.empty
 
 instance ToMustache ω ⇒ ToMustache (HM.HashMap Text ω) where
   toMustache = toMustache ∘ fmap toMustache
 
-instance {-# OVERLAPPABLE #-} (Conversion θ Text, ToMustache ω) ⇒ ToMustache (HM.HashMap θ ω) where
+instance ToMustache ω ⇒ ToMustache (HM.HashMap String ω) where
   toMustache =
     toMustache
     ∘ HM.foldrWithKey
-      (\k → HM.insert (convert k ∷ Text) ∘ toMustache)
+      (\k → HM.insert (pack k) ∘ toMustache)
       HM.empty
 
 instance ToMustache (Context Value → AST → AST) where
@@ -168,13 +164,6 @@ instance ToMustache (Context Value → AST → Text) where
       wrapper ∷ Context Value → AST → AST
       wrapper c lAST = return ∘ TextBlock $ f c lAST
 
-instance {-# OVERLAPPABLE #-} Conversion θ Text
-  ⇒ ToMustache (Context Value → AST → θ) where
-  toMustache f = toMustache wrapper
-    where
-      wrapper :: Context Value → AST → Text
-      wrapper c = convert ∘ f c
-
 instance ToMustache (AST → AST) where
   toMustache f = toMustache (const f ∷ Context Value → AST → AST)
 
@@ -183,11 +172,6 @@ instance ToMustache (AST → Text) where
     where
       wrapper ∷ Context Value → AST → AST
       wrapper _ = (return ∘ TextBlock) ∘ f
-
--- TODO Add these back in when you find a way to do so on earlier GHC versions
--- or you drop support for GHC < 7.10
--- instance {-# OVERLAPPABLE #-} Conversion θ Text ⇒ ToMustache (AST → θ) where
---   toMustache f = toMustache (convert ∘ f ∷ AST → Text)
 
 instance ToMustache Aeson.Value where
   toMustache (Aeson.Object o) = Object $ fmap toMustache o
@@ -344,37 +328,9 @@ infixr 8 ~=
 infixr 8 ⥱
 
 
--- | Conceptually similar to '~>' but uses arbitrary String-likes as keys.
-(~~>) ∷ (Conversion ζ Text, ToMustache ω) ⇒ ζ → ω → Pair
-(~~>) = (~>) ∘ convert
-{-# INLINEABLE (~~>) #-}
-infixr 8 ~~>
-
-
--- | Unicde version of '~~>'
-(~↝) ∷ (Conversion ζ Text, ToMustache ω) ⇒ ζ → ω → Pair
-(~↝) = (~~>)
-{-# INLINEABLE (~↝) #-}
-infixr 8 ~↝
-
-
--- | Conceptually similar to '~=' but uses arbitrary String-likes as keys.
-(~~=) ∷ (Conversion ζ Text, Aeson.ToJSON ι) ⇒ ζ → ι → Pair
-(~~=) = (~=) ∘ convert
-{-# INLINEABLE (~~=) #-}
-infixr 8 ~~=
-
-
--- | Unicode version of '~~='
-(~⥱) ∷ (Conversion ζ Text, Aeson.ToJSON ι) ⇒ ζ → ι → Pair
-(~⥱) = (~~=)
-{-# INLINEABLE (~⥱) #-}
-infixr 8 ~⥱
-
-
 -- | Converts arbitrary String-likes to Values
-toTextBlock ∷ Conversion ζ Text ⇒ ζ → Value
-toTextBlock = String ∘ convert
+-- toTextBlock ∷ Conversion ζ Text ⇒ ζ → Value
+-- toTextBlock = String ∘ convert
 
 
 -- | Converts a value that can be represented as JSON to a Value.

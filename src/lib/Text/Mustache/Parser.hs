@@ -38,17 +38,16 @@ module Text.Mustache.Parser
 
 import           Control.Monad
 import           Control.Monad.Unicode
-import           Conversion                  (Conversion, convert)
-import           Conversion.Text             ()
-import           Data.Char                   (isAlphaNum, isSpace)
-import           Data.Functor                ((<$>))
-import           Data.List                   (nub)
-import           Data.Monoid.Unicode         ((∅), (⊕))
-import           Data.Text                   as T (Text, null, pack)
-import           Prelude                     as Prel
+import           Data.Char              (isAlphaNum, isSpace)
+import           Data.Functor           ((<$>))
+import           Data.List              (nub)
+import           Data.Monoid.Unicode    ((∅), (⊕))
+import           Data.Text              as T (Text, null, pack)
+import           Prelude                as Prel
 import           Prelude.Unicode
+import           Text.Mustache.Internal (TextConvertible, convertT)
 import           Text.Mustache.Types
-import           Text.Parsec                 as P hiding (endOfLine, parse)
+import           Text.Parsec            as P hiding (endOfLine, parse)
 
 
 -- | Initial configuration for the parser
@@ -166,8 +165,8 @@ parseText = do
     else continueLine
 
 
-appendTextStack ∷ Conversion t Text ⇒ t → Parser ()
-appendTextStack t = modifyState (\s → s { textStack = textStack s ⊕ convert t})
+appendTextStack ∷ TextConvertible t ⇒ t → Parser ()
+appendTextStack t = modifyState (\s → s { textStack = textStack s ⊕ convertT t})
 
 
 continueLine ∷ Parser AST
@@ -180,7 +179,7 @@ continueLine = do
   (try endOfLine ≫= appendTextStack ≫ setIsBeginning True ≫ parseLine)
     <|> (try (string start) ≫ switchOnTag ≫= continueFromTag)
     <|> (try eof ≫ finishFile)
-    <|> (anyChar ≫= appendTextStack ≫ continueLine)
+    <|> (anyChar ≫= appendTextStack . (:[]) ≫ continueLine)
 
 
 flushText ∷ Parser AST
