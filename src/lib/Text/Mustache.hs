@@ -173,7 +173,7 @@ module Text.Mustache
   , substituteValue
 
   -- ** Data Conversion
-  , ToMustache, toMustache, object, (~>), (~=), (~~>), (~~=)
+  , ToMustache, toMustache, object, (~>), (~=)
   ) where
 
 
