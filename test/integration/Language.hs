@@ -26,12 +26,12 @@ import           Text.Mustache
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
 
--- langspecDir = "spec-1.1.3"
-langspecDir = "andrewthad-spec-786e4ac"
-specDir = "specs"
-releaseFile = "langspec.tar.gz"
--- releaseURL = "https://codeload.github.com/mustache/spec/tar.gz/v1.1.3"
-releaseURL = "https://codeload.github.com/andrewthad/spec/legacy.tar.gz/add_list_context_check"
+
+-- (langspecDir, specDir, releaseFile, releaseURL)
+langspecs =
+  [ ("andrewthad-spec-786e4ac", "specs", "langspec-pull.tar.gz", "https://codeload.github.com/andrewthad/spec/legacy.tar.gz/add_list_context_check")
+  , ("spec-1.1.3", "specs", "langspec-off.tar.gz", "https://codeload.github.com/mustache/spec/tar.gz/v1.1.3")
+  ]
 
 
 data LangSpecFile = LangSpecFile
@@ -72,14 +72,13 @@ instance FromJSON LangSpecTest where
 (&) = flip ($)
 
 
-getOfficialSpecRelease ∷ FilePath → IO ()
-getOfficialSpecRelease tempdir = do
+getOfficialSpecRelease ∷ FilePath -> FilePath -> FilePath -> FilePath → IO ()
+getOfficialSpecRelease tempdir langspecDir releaseFile releaseURL  = do
   currentDirectory ← getCurrentDirectory
   setCurrentDirectory tempdir
   createDirectory langspecDir
   callProcess "curl" [releaseURL, "-o", releaseFile]
   callProcess "tar" ["-xf", releaseFile]
-  getDirectoryContents "." >>= print
   setCurrentDirectory currentDirectory
 
 
@@ -117,6 +116,8 @@ main =
     withSystemTempDirectory
       "mustache-test-resources"
       $ \tempdir → do
-        getOfficialSpecRelease tempdir
+        for_ langspecs $ \(langspecDir, _, releaseFile, releaseURL) ->
+          getOfficialSpecRelease tempdir langspecDir releaseFile releaseURL
         hspec $
-          testOfficialLangSpec (tempdir </> langspecDir </> specDir)
+          for_ langspecs $ \(langspecDir, specDir, _, _) ->
+            testOfficialLangSpec (tempdir </> langspecDir </> specDir)
