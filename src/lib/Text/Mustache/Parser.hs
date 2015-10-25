@@ -45,7 +45,6 @@ import           Data.Monoid.Unicode    ((∅), (⊕))
 import           Data.Text              as T (Text, null, pack)
 import           Prelude                as Prel
 import           Prelude.Unicode
-import           Text.Mustache.Internal (TextConvertible, convertT)
 import           Text.Mustache.Types
 import           Text.Parsec            as P hiding (endOfLine, parse)
 
@@ -165,8 +164,8 @@ parseText = do
     else continueLine
 
 
-appendTextStack ∷ TextConvertible t ⇒ t → Parser ()
-appendTextStack t = modifyState (\s → s { textStack = textStack s ⊕ convertT t})
+appendStringStack ∷ String → Parser ()
+appendStringStack t = modifyState (\s → s { textStack = textStack s ⊕ pack t})
 
 
 continueLine ∷ Parser AST
@@ -174,12 +173,12 @@ continueLine = do
   (MustacheState { sDelimiters = ( start@(x:_), _ )}) ← getState
   let forbidden = x : "\n\r"
 
-  many (noneOf forbidden) ≫= appendTextStack
+  many (noneOf forbidden) ≫= appendStringStack
 
-  (try endOfLine ≫= appendTextStack ≫ setIsBeginning True ≫ parseLine)
+  (try endOfLine ≫= appendStringStack ≫ setIsBeginning True ≫ parseLine)
     <|> (try (string start) ≫ switchOnTag ≫= continueFromTag)
     <|> (try eof ≫ finishFile)
-    <|> (anyChar ≫= appendTextStack . (:[]) ≫ continueLine)
+    <|> (anyChar ≫= appendStringStack . (:[]) ≫ continueLine)
 
 
 flushText ∷ Parser AST
@@ -206,7 +205,7 @@ parseLine = do
   let handleStandalone = do
         tag ← switchOnTag
         let continueNoStandalone = do
-              appendTextStack initialWhitespace
+              appendStringStack initialWhitespace
               setIsBeginning False
               continueFromTag tag
             standaloneEnding = do
@@ -223,8 +222,8 @@ parseLine = do
               continueFromTag tag
             ) <|> continueNoStandalone
   (try (string start) ≫ handleStandalone)
-    <|> (try eof ≫ appendTextStack initialWhitespace ≫ finishFile)
-    <|> (appendTextStack initialWhitespace ≫ setIsBeginning False ≫ continueLine)
+    <|> (try eof ≫ appendStringStack initialWhitespace ≫ finishFile)
+    <|> (appendStringStack initialWhitespace ≫ setIsBeginning False ≫ continueLine)
 
 
 continueFromTag ∷ ParseTagRes → Parser AST

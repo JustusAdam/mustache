@@ -131,38 +131,55 @@ instance ToMustache ω ⇒ ToMustache [ω] where
 instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
   toMustache = toMustache ∘ fmap toMustache
 
-instance ToMustache ω ⇒ ToMustache (Map.Map Text ω) where
-  toMustache =
-    toMustache
-    ∘ Map.foldrWithKey
-      (\k → HM.insert k ∘ toMustache)
-      HM.empty
+instance (ToMustache ω) ⇒ ToMustache (Map.Map Text ω) where
+  toMustache = mapInstanceHelper id
 
-instance ToMustache ω ⇒ ToMustache (Map.Map String ω) where
-  toMustache =
-    toMustache
-    ∘ Map.foldrWithKey
-      (\k → HM.insert (pack k) ∘ toMustache)
-      HM.empty
+instance (ToMustache ω) ⇒ ToMustache (Map.Map LT.Text ω) where
+  toMustache = mapInstanceHelper LT.toStrict
+
+instance (ToMustache ω) ⇒ ToMustache (Map.Map String ω) where
+  toMustache = mapInstanceHelper pack
+
+mapInstanceHelper :: ToMustache v => (a -> Text) -> Map.Map a v -> Value
+mapInstanceHelper conv =
+  toMustache
+  ∘ Map.foldrWithKey
+    (\k → HM.insert (conv k) ∘ toMustache)
+    HM.empty
 
 instance ToMustache ω ⇒ ToMustache (HM.HashMap Text ω) where
   toMustache = toMustache ∘ fmap toMustache
 
+instance ToMustache ω ⇒ ToMustache (HM.HashMap LT.Text ω) where
+  toMustache = hashMapInstanceHelper LT.toStrict
+
 instance ToMustache ω ⇒ ToMustache (HM.HashMap String ω) where
-  toMustache =
-    toMustache
-    ∘ HM.foldrWithKey
-      (\k → HM.insert (pack k) ∘ toMustache)
-      HM.empty
+  toMustache = hashMapInstanceHelper pack
+
+hashMapInstanceHelper :: ToMustache v => (a -> Text) -> HM.HashMap a v -> Value
+hashMapInstanceHelper conv =
+  toMustache
+  ∘ HM.foldrWithKey
+    (\k → HM.insert (conv k) ∘ toMustache)
+    HM.empty
 
 instance ToMustache (Context Value → AST → AST) where
   toMustache = Lambda
 
 instance ToMustache (Context Value → AST → Text) where
-  toMustache f = toMustache wrapper
-    where
-      wrapper ∷ Context Value → AST → AST
-      wrapper c lAST = return ∘ TextBlock $ f c lAST
+  toMustache = lambdaInstanceHelper id
+
+instance ToMustache (Context Value → AST → LT.Text) where
+  toMustache = lambdaInstanceHelper LT.toStrict
+
+instance ToMustache (Context Value → AST → String) where
+  toMustache = lambdaInstanceHelper pack
+
+lambdaInstanceHelper :: (a -> Text) -> (Context Value -> AST -> a) -> Value
+lambdaInstanceHelper conv f = Lambda wrapper
+  where
+    wrapper ∷ Context Value → AST → AST
+    wrapper c lAST = return ∘ TextBlock $ conv $ f c lAST
 
 instance ToMustache (AST → AST) where
   toMustache f = toMustache (const f ∷ Context Value → AST → AST)
@@ -326,11 +343,6 @@ infixr 8 ~=
 (⥱) = (~=)
 {-# INLINEABLE (⥱) #-}
 infixr 8 ⥱
-
-
--- | Converts arbitrary String-likes to Values
--- toTextBlock ∷ Conversion ζ Text ⇒ ζ → Value
--- toTextBlock = String ∘ convert
 
 
 -- | Converts a value that can be represented as JSON to a Value.
