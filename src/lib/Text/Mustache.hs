@@ -120,7 +120,7 @@ lambda functions which represents the data the template is being filled with.
 ['ToMustache'] A typeclass for converting arbitrary types to 'Value', similar
 to Data.Aeson.ToJSON but with support for lambdas.
 
-['Template'] Contains the 'AST', the abstract syntax tree, which is basically a
+['Template'] Contains the 'STree', the syntax tree, which is basically a
 list of text blocks and mustache tags. The 'name' of the template and its
 'partials' cache.
 
@@ -129,7 +129,7 @@ list of text blocks and mustache tags. The 'name' of the template and its
 During the compilation step the template file is located, read, then parsed in a single
 pass ('compileTemplate'), resulting in a 'Template' with an empty 'partials' section.
 
-Subsequenty the 'AST' of the template is scanned for included partials, any
+Subsequenty the 'STree' of the template is scanned for included partials, any
 present 'TemplateCache' is queried for the partial ('compileTemplateWithCache'),
 if not found it will be searched for in the @searchSpache@, compiled and
 inserted into the template's own cache as well as the global cache for the

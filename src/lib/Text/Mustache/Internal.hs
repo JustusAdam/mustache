@@ -7,13 +7,8 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE UnicodeSyntax        #-}
+{-# LANGUAGE UnicodeSyntax #-}
 module Text.Mustache.Internal (uncons) where
-
-
-import           Data.Text hiding (uncons)
 
 
 uncons ∷ [a] → Maybe (a, [a])

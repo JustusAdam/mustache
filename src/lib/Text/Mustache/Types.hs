@@ -15,7 +15,7 @@ Portability : POSIX
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
-    AST
+    STree
   , Template(..)
   , Node(..)
   , DataIdentifier(..)
@@ -43,15 +43,15 @@ import qualified Data.Text.Lazy      as LT
 import qualified Data.Vector         as V
 import           Prelude.Unicode
 
--- | Abstract syntax tree for a mustache template
-type AST = [Node Text]
+-- | Syntax tree for a mustache template
+type STree = [Node Text]
 
 
--- | Basic values composing the AST
+-- | Basic values composing the STree
 data Node α
   = TextBlock α
-  | Section DataIdentifier AST
-  | InvertedSection DataIdentifier AST
+  | Section DataIdentifier STree
+  | InvertedSection DataIdentifier STree
   | Variable Bool DataIdentifier
   | Partial (Maybe α) FilePath
   deriving (Show, Eq)
@@ -76,13 +76,13 @@ type Pair   = (Text, Value)
 data Context α = Context [α] α
   deriving (Eq, Show, Ord)
 
--- | Internal value AST
+-- | Internal value STree
 data Value
   = Object Object
   | Array  Array
   | Number Scientific
   | String Text
-  | Lambda (Context Value → AST → AST)
+  | Lambda (Context Value → STree → STree)
   | Bool   Bool
   | Null
 
@@ -163,31 +163,31 @@ hashMapInstanceHelper conv =
     (\k → HM.insert (conv k) ∘ toMustache)
     HM.empty
 
-instance ToMustache (Context Value → AST → AST) where
+instance ToMustache (Context Value → STree → STree) where
   toMustache = Lambda
 
-instance ToMustache (Context Value → AST → Text) where
+instance ToMustache (Context Value → STree → Text) where
   toMustache = lambdaInstanceHelper id
 
-instance ToMustache (Context Value → AST → LT.Text) where
+instance ToMustache (Context Value → STree → LT.Text) where
   toMustache = lambdaInstanceHelper LT.toStrict
 
-instance ToMustache (Context Value → AST → String) where
+instance ToMustache (Context Value → STree → String) where
   toMustache = lambdaInstanceHelper pack
 
-lambdaInstanceHelper :: (a -> Text) -> (Context Value -> AST -> a) -> Value
+lambdaInstanceHelper :: (a -> Text) -> (Context Value -> STree -> a) -> Value
 lambdaInstanceHelper conv f = Lambda wrapper
   where
-    wrapper ∷ Context Value → AST → AST
-    wrapper c lAST = return ∘ TextBlock $ conv $ f c lAST
+    wrapper ∷ Context Value → STree → STree
+    wrapper c lSTree = return ∘ TextBlock $ conv $ f c lSTree
 
-instance ToMustache (AST → AST) where
-  toMustache f = toMustache (const f ∷ Context Value → AST → AST)
+instance ToMustache (STree → STree) where
+  toMustache f = toMustache (const f ∷ Context Value → STree → STree)
 
-instance ToMustache (AST → Text) where
+instance ToMustache (STree → Text) where
   toMustache f = toMustache wrapper
     where
-      wrapper ∷ Context Value → AST → AST
+      wrapper ∷ Context Value → STree → STree
       wrapper _ = (return ∘ TextBlock) ∘ f
 
 instance ToMustache Aeson.Value where
@@ -361,6 +361,6 @@ type Key = Text
 -}
 data Template = Template
   { name     ∷ String
-  , ast      ∷ AST
+  , ast      ∷ STree
   , partials ∷ TemplateCache
   } deriving (Show)

@@ -147,16 +147,16 @@ endOfLine = do
 {-|
   Runs the parser for a mustache template, returning the syntax tree.
 -}
-parse ∷ FilePath → Text → Either ParseError AST
+parse ∷ FilePath → Text → Either ParseError STree
 parse = parseWithConf defaultConf
 
 
 -- | Parse using a custom initial configuration
-parseWithConf ∷ MustacheConf → FilePath → Text → Either ParseError AST
+parseWithConf ∷ MustacheConf → FilePath → Text → Either ParseError STree
 parseWithConf = P.runParser parseText ∘ initState
 
 
-parseText ∷ Parser AST
+parseText ∷ Parser STree
 parseText = do
   (MustacheState { isBeginngingOfLine }) ← getState
   if isBeginngingOfLine
@@ -168,7 +168,7 @@ appendStringStack ∷ String → Parser ()
 appendStringStack t = modifyState (\s → s { textStack = textStack s ⊕ pack t})
 
 
-continueLine ∷ Parser AST
+continueLine ∷ Parser STree
 continueLine = do
   (MustacheState { sDelimiters = ( start@(x:_), _ )}) ← getState
   let forbidden = x : "\n\r"
@@ -181,7 +181,7 @@ continueLine = do
     <|> (anyChar ≫= appendStringStack . (:[]) ≫ continueLine)
 
 
-flushText ∷ Parser AST
+flushText ∷ Parser STree
 flushText = do
   s@(MustacheState { textStack = text }) ← getState
   putState $ s { textStack = (∅) }
@@ -190,7 +190,7 @@ flushText = do
               else [TextBlock text]
 
 
-finishFile ∷ Parser AST
+finishFile ∷ Parser STree
 finishFile =
   getState ≫= \case
     (MustacheState {currentSectionName = Nothing}) → flushText
@@ -198,7 +198,7 @@ finishFile =
       parserFail $ "Unclosed section " ⊕ show name
 
 
-parseLine ∷ Parser AST
+parseLine ∷ Parser STree
 parseLine = do
   (MustacheState { sDelimiters = ( start, _ ) }) ← getState
   initialWhitespace ← many (oneOf " \t")
@@ -226,7 +226,7 @@ parseLine = do
     <|> (appendStringStack initialWhitespace ≫ setIsBeginning False ≫ continueLine)
 
 
-continueFromTag ∷ ParseTagRes → Parser AST
+continueFromTag ∷ ParseTagRes → Parser STree
 continueFromTag (SectionBegin inverted name) = do
   textNodes ← flushText
   state@(MustacheState

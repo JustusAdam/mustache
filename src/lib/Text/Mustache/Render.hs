@@ -66,17 +66,17 @@ substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
     substitute' _ (TextBlock t) = t
 
     -- substituting a whole section (entails a focus shift)
-    substitute' (Context parents focus@(Array a)) (Section Implicit secAST)
+    substitute' (Context parents focus@(Array a)) (Section Implicit secSTree)
       | V.null a  = (∅)
       | otherwise = flip joinSubstituted a $ \focus' →
         let
           newContext = Context (focus:parents) focus'
         in
-          joinSubstituted (substitute' newContext) secAST
-    substitute' context@(Context _ (Object _)) (Section Implicit secAST) =
-      joinSubstituted (substitute' context) secAST
+          joinSubstituted (substitute' newContext) secSTree
+    substitute' context@(Context _ (Object _)) (Section Implicit secSTree) =
+      joinSubstituted (substitute' context) secSTree
     substitute' _ (Section Implicit _) = (∅)
-    substitute' context@(Context parents focus) (Section (NamedData secName) secAST) =
+    substitute' context@(Context parents focus) (Section (NamedData secName) secSTree) =
       case search context secName of
         Just arr@(Array arrCont) →
           if V.null arrCont
@@ -85,26 +85,26 @@ substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
               let
                 newContext = Context (arr:focus:parents) focus'
               in
-                joinSubstituted (substitute' newContext) secAST
+                joinSubstituted (substitute' newContext) secSTree
         Just (Bool False) → (∅)
-        Just (Lambda l)   → joinSubstituted (substitute' context) (l context secAST)
+        Just (Lambda l)   → joinSubstituted (substitute' context) (l context secSTree)
         Just focus'       →
           let
             newContext = Context (focus:parents) focus'
           in
-            joinSubstituted (substitute' newContext) secAST
+            joinSubstituted (substitute' newContext) secSTree
         Nothing → (∅)
 
     -- substituting an inverted section
     substitute' _       (InvertedSection  Implicit           _        ) = (∅)
-    substitute' context (InvertedSection (NamedData secName) invSecAST) =
+    substitute' context (InvertedSection (NamedData secName) invSecSTree) =
       case search context secName of
         Just (Bool False)         → contents
         Just (Array a) | V.null a → contents
         Nothing                   → contents
         _                         → (∅)
       where
-        contents = joinSubstituted (substitute' context) invSecAST
+        contents = joinSubstituted (substitute' context) invSecSTree
 
     -- substituting a variable
     substitute' (Context _ current) (Variable _ Implicit) = toString current
@@ -122,7 +122,7 @@ substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
         $ HM.lookup pName cPartials
 
 
-handleIndent ∷ Maybe Text → AST → AST
+handleIndent ∷ Maybe Text → STree → STree
 handleIndent Nothing ast' = ast'
 handleIndent (Just indentation) ast' = preface ⊕ content
   where

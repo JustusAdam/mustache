@@ -78,7 +78,7 @@ compileTemplateWithCache searchSpace templates initName =
         Just template → return template
         Nothing → do
           rawSource ← lift $ getFile searchSpace name'
-          compiled@(Template { ast = mAST }) ←
+          compiled@(Template { ast = mSTree }) ←
             lift $ hoistEither $ compileTemplate name' rawSource
 
           foldM
@@ -88,7 +88,7 @@ compileTemplateWithCache searchSpace templates initName =
               return (st { partials = HM.insert partialName nt p })
             )
             compiled
-            (getPartials mAST)
+            (getPartials mSTree)
 
 
 -- | Flatten a list of Templates into a single 'TemplateChache'
@@ -103,11 +103,11 @@ compileTemplate name' = fmap (flip (Template name') (∅)) ∘ parse name'
 
 
 {-|
-  Find the names of all included partials in a mustache AST.
+  Find the names of all included partials in a mustache STree.
 
   Same as @join . fmap getPartials'@
 -}
-getPartials ∷ AST → [FilePath]
+getPartials ∷ STree → [FilePath]
 getPartials = join ∘ fmap getPartials'
 
 
