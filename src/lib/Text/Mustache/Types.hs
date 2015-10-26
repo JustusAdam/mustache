@@ -76,7 +76,7 @@ type Pair   = (Text, Value)
 data Context α = Context [α] α
   deriving (Eq, Show, Ord)
 
--- | Internal value STree
+-- | Internal value representation
 data Value
   = Object Object
   | Array  Array
@@ -97,9 +97,6 @@ instance Show Value where
   show Null       = "null"
 
 -- | Conversion class
---
--- Note that some instances of this class overlap delierately to provide
--- maximum flexibility instances while preserving maximum efficiency.
 class ToMustache ω where
   toMustache ∷ ω → Value
   listToMustache ∷ [ω] → Value
