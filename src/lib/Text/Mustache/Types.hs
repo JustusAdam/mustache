@@ -96,19 +96,21 @@ instance Show Value where
   show (Bool   b) = show b
   show Null       = "null"
 
-
 -- | Conversion class
 --
 -- Note that some instances of this class overlap delierately to provide
 -- maximum flexibility instances while preserving maximum efficiency.
 class ToMustache ω where
   toMustache ∷ ω → Value
+  listToMustache ∷ [ω] → Value
+  listToMustache = Array ∘ V.fromList ∘ fmap toMustache
+
+instance ToMustache Char where
+  toMustache = toMustache . (:[])
+  listToMustache = String . pack
 
 instance ToMustache Value where
   toMustache = id
-
-instance ToMustache String where
-  toMustache = toMustache ∘ pack
 
 instance ToMustache Bool where
   toMustache = Bool
@@ -125,8 +127,8 @@ instance ToMustache LT.Text where
 instance ToMustache Scientific where
   toMustache = Number
 
-instance {-# OVERLAPPABLE #-} ToMustache ω ⇒ ToMustache [ω] where
-  toMustache = Array ∘ V.fromList ∘ fmap toMustache
+instance ToMustache a => ToMustache [a] where
+  toMustache = listToMustache
 
 instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
   toMustache = toMustache ∘ fmap toMustache

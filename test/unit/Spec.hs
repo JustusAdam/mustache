@@ -182,7 +182,7 @@ substituteSpec =
           , "inner" ~> ("error" :: T.Text)
           ]
         )
-        `shouldBe` "success"
+      `shouldBe` "success"
 
 
 converterSpec :: Spec
