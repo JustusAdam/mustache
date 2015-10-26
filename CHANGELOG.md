@@ -1,5 +1,10 @@
 # Mustache library changelog
 
+## v0.5.0.0rc-6
+
+- Removed any dependency on ghc 7.10-type OverlappingInstances
+- Resolved String/List overlapping instances
+
 ## v0.4.0.1rc-5
 
 - Added a necessary OVERLAPPABLE pragma
