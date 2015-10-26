@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v0.4.0.1rc-5
+
+- Added a necessary OVERLAPPABLE pragma
+
 ## v0.4.0.0rc-4 (current stable version)
 
 - Removed `conversion` and `conversion-text` dependency.

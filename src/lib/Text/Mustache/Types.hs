@@ -107,7 +107,7 @@ class ToMustache ω where
 instance ToMustache Value where
   toMustache = id
 
-instance ToMustache [Char] where
+instance ToMustache String where
   toMustache = toMustache ∘ pack
 
 instance ToMustache Bool where
@@ -125,7 +125,7 @@ instance ToMustache LT.Text where
 instance ToMustache Scientific where
   toMustache = Number
 
-instance ToMustache ω ⇒ ToMustache [ω] where
+instance {-# OVERLAPPABLE #-} ToMustache ω ⇒ ToMustache [ω] where
   toMustache = Array ∘ V.fromList ∘ fmap toMustache
 
 instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
