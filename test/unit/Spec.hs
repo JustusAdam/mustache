@@ -185,7 +185,15 @@ substituteSpec =
         `shouldBe` "success"
 
 
+converterSpec :: Spec
+converterSpec =
+  describe "toMustache" $
+    it "converts a String" $
+      toMustache ("My String" :: String) `shouldSatisfy` \case (String "My String") -> True; _ -> False
+
+
 main :: IO ()
 main = hspec $ do
   parserSpec
   substituteSpec
+  converterSpec
