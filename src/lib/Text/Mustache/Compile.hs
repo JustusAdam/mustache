@@ -23,7 +23,7 @@ import           Control.Monad.Unicode
 import           Data.Bool
 import           Data.Function.JAExtra
 import           Data.HashMap.Strict        as HM
-import           Data.Monoid.Unicode        ((⊕), (∅))
+import           Data.Monoid.Unicode        ((∅))
 import           Data.Text                  hiding (concat, find, map, uncons)
 import qualified Data.Text.IO               as TIO
 import           Prelude.Unicode
@@ -67,7 +67,7 @@ compileTemplateWithCache ∷ [FilePath]
 compileTemplateWithCache searchSpace templates initName =
   runEitherT $ evalStateT (compile' initName) $ flattenPartials templates
   where
-    compile' :: FilePath
+    compile' ∷ FilePath
              → StateT
                 (HM.HashMap String Template)
                 (EitherT ParseError IO)

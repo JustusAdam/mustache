@@ -103,8 +103,8 @@ class ToMustache ω where
   listToMustache = Array ∘ V.fromList ∘ fmap toMustache
 
 instance ToMustache Char where
-  toMustache = toMustache . (:[])
-  listToMustache = String . pack
+  toMustache = toMustache ∘ (:[])
+  listToMustache = String ∘ pack
 
 instance ToMustache Value where
   toMustache = id
@@ -124,7 +124,7 @@ instance ToMustache LT.Text where
 instance ToMustache Scientific where
   toMustache = Number
 
-instance ToMustache a => ToMustache [a] where
+instance ToMustache α ⇒ ToMustache [α] where
   toMustache = listToMustache
 
 instance ToMustache ω ⇒ ToMustache (V.Vector ω) where

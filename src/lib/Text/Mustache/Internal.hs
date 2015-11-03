@@ -11,6 +11,6 @@ Portability : POSIX
 module Text.Mustache.Internal (uncons) where
 
 
-uncons ∷ [a] → Maybe (a, [a])
+uncons ∷ [α] → Maybe (α, [α])
 uncons []     = Nothing
 uncons (x:xs) = return (x, xs)
