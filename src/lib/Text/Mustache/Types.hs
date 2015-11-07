@@ -109,7 +109,7 @@ instance ToMustache Double where
   toMustache = Number ∘ fromFloatDigits
 
 instance ToMustache Integer where
-  toMustache = Number ∘ flip scientific 0
+  toMustache = Number ∘ fromInteger
 
 instance ToMustache Int where
   toMustache = toMustache . toInteger
