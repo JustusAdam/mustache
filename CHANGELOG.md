@@ -1,5 +1,10 @@
 # Mustache library changelog
 
+## v0.5.1.0rc-7
+
+- Removed dependency tagsoup
+- Added ToMustache instances for some numbers
+
 ## v0.5.0.0rc-6
 
 - Removed any dependency on ghc 7.10-type OverlappingInstances

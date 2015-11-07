@@ -1,5 +1,5 @@
 name:                mustache
-version:             0.5.0.1
+version:             0.5.1.0
 synopsis:            A mustache template parser library.
 description:
   Allows parsing and rendering template files with mustache markup. See the
@@ -30,7 +30,7 @@ source-repository this
   type:     git
   branch:   master
   location: git://github.com/JustusAdam/mustache.git
-  tag:      v0.5.0.1rc-7
+  tag:      v0.5.1.0rc-7
 
 
 
