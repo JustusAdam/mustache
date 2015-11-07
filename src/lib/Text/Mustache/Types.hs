@@ -102,6 +102,18 @@ class ToMustache ω where
   listToMustache ∷ [ω] → Value
   listToMustache = Array ∘ V.fromList ∘ fmap toMustache
 
+instance ToMustache Float where
+  toMustache = Number ∘ fromFloatDigits
+
+instance ToMustache Double where
+  toMustache = Number ∘ fromFloatDigits
+
+instance ToMustache Integer where
+  toMustache = Number ∘ flip scientific 0
+
+instance ToMustache Int where
+  toMustache = toMustache . toInteger
+
 instance ToMustache Char where
   toMustache = toMustache ∘ (:[])
   listToMustache = String ∘ pack
