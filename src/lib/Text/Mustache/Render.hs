@@ -34,7 +34,6 @@ import           Data.Text              as T (Text, isSuffixOf, null, pack,
 import qualified Data.Vector            as V
 import           Prelude                hiding (length, lines, unlines)
 import           Prelude.Unicode
-import           Text.HTML.TagSoup      (escapeHTML)
 import           Text.Mustache.Internal
 import           Text.Mustache.Types
 
@@ -111,7 +110,7 @@ substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
     substitute' context (Variable escaped (NamedData varName)) =
       maybe
         (∅)
-        (if escaped then escapeHTML else id)
+        (if escaped then escapeXMLText else id)
         $ toString <$> search context varName
 
     -- substituting a partial
@@ -149,9 +148,9 @@ handleIndent (Just indentation) ast' = preface ⊕ content
 search ∷ Context Value → [Key] → Maybe Value
 search _ [] = Nothing
 search ctx keys@(_:nextKeys) = go ctx keys ≫= innerSearch nextKeys
-  where 
+  where
   go _ [] = Nothing
-  go (Context parents focus) val@(x:_) = 
+  go (Context parents focus) val@(x:_) =
     ( case focus of
       (Object o) → HM.lookup x o
       _          → Nothing
