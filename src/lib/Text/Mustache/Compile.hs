@@ -31,8 +31,8 @@ import           System.Directory
 import           System.FilePath
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
-import           Text.Parsec.Error
-import           Text.Parsec.Pos
+import           Data.Attoparsec.Error
+import           Data.Attoparsec.Pos
 import           Text.Printf
 
 

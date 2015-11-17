@@ -14,7 +14,7 @@ Portability : POSIX
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE UnicodeSyntax         #-}
-module Text.Mustache.Parser
+module Text.Mustache.MParser
   (
   -- * Generic parsing functions
 
@@ -24,9 +24,9 @@ module Text.Mustache.Parser
 
   , MustacheConf, defaultConf
 
-  -- * Parser
+  -- * MParser
 
-  , Parser, MustacheState
+  , MParser, MustacheState
 
   -- * Mustache Constants
 
@@ -46,7 +46,9 @@ import           Data.Text              as T (Text, null, pack)
 import           Prelude                as Prel
 import           Prelude.Unicode
 import           Text.Mustache.Types
-import           Text.Parsec            as P hiding (endOfLine, parse)
+import qualified Data.Attoparsec.Text            as P hiding (endOfLine, parse)
+import Control.Monad.Trans.State
+import Control.Applicative
 
 
 -- | Initial configuration for the parser
@@ -106,9 +108,9 @@ isAllowedDelimiterCharacter ∷ Char → Bool
 isAllowedDelimiterCharacter =
   not ∘ Prel.or ∘ sequence
     [ isSpace, isAlphaNum, (≡ nestingSeparator) ]
-allowedDelimiterCharacter ∷ Parser Char
+allowedDelimiterCharacter ∷ MParser Char
 allowedDelimiterCharacter =
-  satisfy isAllowedDelimiterCharacter
+  P.satisfy isAllowedDelimiterCharacter
 
 
 -- | Empty configuration
@@ -125,83 +127,83 @@ initState ∷ MustacheConf → MustacheState
 initState (MustacheConf { delimiters }) = emptyState { sDelimiters = delimiters }
 
 
-setIsBeginning ∷ Bool → Parser ()
-setIsBeginning b = modifyState (\s -> s { isBeginngingOfLine = b })
+setIsBeginning ∷ Bool → MParser ()
+setIsBeginning b = modify (\s -> s { isBeginngingOfLine = b })
 
 
 -- | The parser monad in use
-type Parser = Parsec Text MustacheState
+type MParser = StateT MustacheState P.Parser
 
 
 (<<) ∷ Monad m ⇒ m b → m a → m b
 (<<) = flip (≫)
 
 
-endOfLine ∷ Parser String
+endOfLine ∷ MParser String
 endOfLine = do
-  r ← optionMaybe $ char '\r'
-  n ← char '\n'
-  return $ maybe id (:) r [n]
+  r ← return (P.char '\r') <|> return ""
+  n ← P.char '\n'
+  return $ maybe id (++) r [n]
 
 
 {-|
   Runs the parser for a mustache template, returning the syntax tree.
 -}
-parse ∷ FilePath → Text → Either ParseError STree
+parse ∷ FilePath → Text → P.Result STree
 parse = parseWithConf defaultConf
 
 
 -- | Parse using a custom initial configuration
-parseWithConf ∷ MustacheConf → FilePath → Text → Either ParseError STree
-parseWithConf = P.runParser parseText ∘ initState
+parseWithConf ∷ MustacheConf → FilePath → Text → P.Result STree
+parseWithConf = runState ∘ parseText ∘ initState
 
 
-parseText ∷ Parser STree
+parseText ∷ MParser STree
 parseText = do
-  (MustacheState { isBeginngingOfLine }) ← getState
+  (MustacheState { isBeginngingOfLine }) ← get
   if isBeginngingOfLine
     then parseLine
     else continueLine
 
 
-appendStringStack ∷ String → Parser ()
-appendStringStack t = modifyState (\s → s { textStack = textStack s ⊕ pack t})
+appendStringStack ∷ String → MParser ()
+appendStringStack t = modify (\s → s { textStack = textStack s ⊕ pack t})
 
 
-continueLine ∷ Parser STree
+continueLine ∷ MParser STree
 continueLine = do
-  (MustacheState { sDelimiters = ( start@(x:_), _ )}) ← getState
+  (MustacheState { sDelimiters = ( start@(x:_), _ )}) ← get
   let forbidden = x : "\n\r"
 
-  many (noneOf forbidden) ≫= appendStringStack
+  many (P.notChar forbidden) ≫= appendStringStack
 
-  (try endOfLine ≫= appendStringStack ≫ setIsBeginning True ≫ parseLine)
+  (P.try endOfLine ≫= appendStringStack ≫ setIsBeginning True ≫ parseLine)
     <|> (try (string start) ≫ switchOnTag ≫= continueFromTag)
-    <|> (try eof ≫ finishFile)
+    <|> (try endOfInput ≫ finishFile)
     <|> (anyChar ≫= appendStringStack . (:[]) ≫ continueLine)
 
 
-flushText ∷ Parser STree
+flushText ∷ MParser STree
 flushText = do
-  s@(MustacheState { textStack = text }) ← getState
-  putState $ s { textStack = (∅) }
+  s@(MustacheState { textStack = text }) ← get
+  put $ s { textStack = (∅) }
   return $ if T.null text
               then []
               else [TextBlock text]
 
 
-finishFile ∷ Parser STree
+finishFile ∷ MParser STree
 finishFile =
-  getState ≫= \case
+  get ≫= \case
     (MustacheState {currentSectionName = Nothing}) → flushText
     (MustacheState {currentSectionName = Just name}) →
-      parserFail $ "Unclosed section " ⊕ show name
+      fail $ "Unclosed section " ⊕ show name
 
 
-parseLine ∷ Parser STree
+parseLine ∷ MParser STree
 parseLine = do
-  (MustacheState { sDelimiters = ( start, _ ) }) ← getState
-  initialWhitespace ← many (oneOf " \t")
+  (MustacheState { sDelimiters = ( start, _ ) }) ← get
+  initialWhitespace ← many (option $ map char " \t")
   let handleStandalone = do
         tag ← switchOnTag
         let continueNoStandalone = do
@@ -209,7 +211,7 @@ parseLine = do
               setIsBeginning False
               continueFromTag tag
             standaloneEnding = do
-              try (skipMany (oneOf " \t") ≫ (eof <|> void endOfLine))
+              try (skipMany (option $ map char " \t") ≫ (endOfInput <|> void endOfLine))
               setIsBeginning True
         case tag of
           Tag (Partial _ name) →
@@ -226,7 +228,7 @@ parseLine = do
     <|> (appendStringStack initialWhitespace ≫ setIsBeginning False ≫ continueLine)
 
 
-continueFromTag ∷ ParseTagRes → Parser STree
+continueFromTag ∷ ParseTagRes → MParser STree
 continueFromTag (SectionBegin inverted name) = do
   textNodes ← flushText
   state@(MustacheState
@@ -254,7 +256,7 @@ continueFromTag (Tag tag) = do
 continueFromTag HandledTag = parseText
 
 
-switchOnTag ∷ Parser ParseTagRes
+switchOnTag ∷ MParser ParseTagRes
 switchOnTag = do
   (MustacheState { sDelimiters = ( _, end )}) ← getState
 
@@ -292,14 +294,14 @@ switchOnTag = do
       putState $ oldState { sDelimiters = (delim1, delim2) }
 
 
-genParseTagEnd ∷ String → Parser DataIdentifier
+genParseTagEnd ∷ String → MParser DataIdentifier
 genParseTagEnd emod = do
   (MustacheState { sDelimiters = ( start, end ) }) ← getState
 
   let nEnd = emod ⊕ end
       disallowed = nub $ nestingSeparator : start ⊕ end
 
-      parseOne :: Parser [Text]
+      parseOne :: MParser [Text]
       parseOne = do
 
         one ← noneOf disallowed
