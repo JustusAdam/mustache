@@ -24,7 +24,7 @@ unescaped = False
 parserSpec :: Spec
 parserSpec =
   describe "mustacheParser" $ do
-    let lparse = parse "testsuite"
+    let lparse = parse
     let returnedOne = return . return
 
     let text = "test12356p0--=-34{}jnv,\n"

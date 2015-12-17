@@ -14,7 +14,7 @@ Portability : POSIX
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE UnicodeSyntax         #-}
-module Text.Mustache.MParser
+module Text.Mustache.Parser
   (
   -- * Generic parsing functions
 
@@ -42,25 +42,26 @@ import           Data.Char              (isAlphaNum, isSpace)
 import           Data.Functor           ((<$>))
 import           Data.List              (nub)
 import           Data.Monoid.Unicode    ((∅), (⊕))
-import           Data.Text              as T (Text, null, pack)
+import qualified Data.Text              as T
 import           Prelude                as Prel
 import           Prelude.Unicode
 import           Text.Mustache.Types
-import qualified Data.Attoparsec.Text            as P hiding (endOfLine, parse)
+import qualified Data.Attoparsec.Text            as P hiding (endOfLine)
 import Control.Monad.Trans.State
+import Control.Monad.Trans (lift)
 import Control.Applicative
 
 
 -- | Initial configuration for the parser
 data MustacheConf = MustacheConf
-  { delimiters ∷ (String, String)
+  { delimiters ∷ (T.Text, T.Text)
   }
 
 
 -- | User state for the parser
 data MustacheState = MustacheState
-  { sDelimiters        ∷ (String, String)
-  , textStack          ∷ Text
+  { sDelimiters        ∷ (T.Text, T.Text)
+  , textStack          ∷ T.Text
   , isBeginngingOfLine ∷ Bool
   , currentSectionName ∷ Maybe DataIdentifier
   }
@@ -69,7 +70,7 @@ data MustacheState = MustacheState
 data ParseTagRes
   = SectionBegin Bool DataIdentifier
   | SectionEnd DataIdentifier
-  | Tag (Node Text)
+  | Tag (Node T.Text)
   | HandledTag
 
 
@@ -108,7 +109,7 @@ isAllowedDelimiterCharacter ∷ Char → Bool
 isAllowedDelimiterCharacter =
   not ∘ Prel.or ∘ sequence
     [ isSpace, isAlphaNum, (≡ nestingSeparator) ]
-allowedDelimiterCharacter ∷ MParser Char
+allowedDelimiterCharacter ∷ P.Parser Char
 allowedDelimiterCharacter =
   P.satisfy isAllowedDelimiterCharacter
 
@@ -139,23 +140,26 @@ type MParser = StateT MustacheState P.Parser
 (<<) = flip (≫)
 
 
-endOfLine ∷ MParser String
-endOfLine = do
-  r ← return (P.char '\r') <|> return ""
-  n ← P.char '\n'
-  return $ maybe id (++) r [n]
+endOfLine ∷ P.Parser T.Text
+endOfLine = P.string "\r\n" <|> P.string "\n"
 
 
 {-|
   Runs the parser for a mustache template, returning the syntax tree.
 -}
-parse ∷ FilePath → Text → P.Result STree
+parse ∷ T.Text → Either String STree
 parse = parseWithConf defaultConf
 
 
 -- | Parse using a custom initial configuration
-parseWithConf ∷ MustacheConf → FilePath → Text → P.Result STree
-parseWithConf = runState ∘ parseText ∘ initState
+parseWithConf ∷ MustacheConf → T.Text → Either String STree
+parseWithConf = (handleErrors ∘) ∘ P.parse ∘ evalStateT parseText ∘ initState
+
+
+handleErrors ∷ P.Result a -> Either String a
+handleErrors (P.Done _ r) = return r
+handleErrors (P.Partial c) = handleErrors $ c ""
+handleErrors (P.Fail _ _ a) = Left a
 
 
 parseText ∷ MParser STree
@@ -166,21 +170,21 @@ parseText = do
     else continueLine
 
 
-appendStringStack ∷ String → MParser ()
-appendStringStack t = modify (\s → s { textStack = textStack s ⊕ pack t})
+appendStringStack ∷ T.Text → MParser ()
+appendStringStack t = modify (\s → s { textStack = textStack s ⊕ t})
 
 
 continueLine ∷ MParser STree
 continueLine = do
-  (MustacheState { sDelimiters = ( start@(x:_), _ )}) ← get
-  let forbidden = x : "\n\r"
+  (MustacheState { sDelimiters = ( start, _ )}) ← get
+  let forbidden = T.head start : "\n\r"
 
-  many (P.notChar forbidden) ≫= appendStringStack
+  lift (many (P.satisfy (P.notInClass forbidden))) ≫= appendStringStack ∘ T.pack
 
-  (P.try endOfLine ≫= appendStringStack ≫ setIsBeginning True ≫ parseLine)
-    <|> (try (string start) ≫ switchOnTag ≫= continueFromTag)
-    <|> (try endOfInput ≫ finishFile)
-    <|> (anyChar ≫= appendStringStack . (:[]) ≫ continueLine)
+  (lift (P.try endOfLine) ≫= appendStringStack ≫ setIsBeginning True ≫ parseLine)
+    <|> (lift (P.string start) ≫ switchOnTag ≫= continueFromTag)
+    <|> (lift P.endOfInput ≫ finishFile)
+    <|> (lift P.anyChar ≫= appendStringStack . T.singleton ≫ continueLine)
 
 
 flushText ∷ MParser STree
@@ -203,7 +207,7 @@ finishFile =
 parseLine ∷ MParser STree
 parseLine = do
   (MustacheState { sDelimiters = ( start, _ ) }) ← get
-  initialWhitespace ← many (option $ map char " \t")
+  initialWhitespace ← lift $ T.pack <$> P.many' (P.satisfy $ P.inClass " \t")
   let handleStandalone = do
         tag ← switchOnTag
         let continueNoStandalone = do
@@ -211,44 +215,52 @@ parseLine = do
               setIsBeginning False
               continueFromTag tag
             standaloneEnding = do
-              try (skipMany (option $ map char " \t") ≫ (endOfInput <|> void endOfLine))
+              lift $ do
+                P.try $ P.skipMany $ P.satisfy $ P.inClass " \t"
+                P.endOfInput <|> void endOfLine
               setIsBeginning True
         case tag of
           Tag (Partial _ name) →
             ( standaloneEnding ≫
-              continueFromTag (Tag (Partial (Just (pack initialWhitespace)) name))
+              continueFromTag (Tag (Partial (Just initialWhitespace) name))
             ) <|> continueNoStandalone
           Tag _ → continueNoStandalone
           _     →
             ( standaloneEnding ≫
               continueFromTag tag
             ) <|> continueNoStandalone
-  (try (string start) ≫ handleStandalone)
-    <|> (try eof ≫ appendStringStack initialWhitespace ≫ finishFile)
-    <|> (appendStringStack initialWhitespace ≫ setIsBeginning False ≫ continueLine)
+  (lift (P.string start) ≫ handleStandalone)
+    <|> do
+      lift P.endOfInput
+      appendStringStack initialWhitespace
+      finishFile
+    <|> do
+      appendStringStack initialWhitespace
+      setIsBeginning False
+      continueLine
 
 
 continueFromTag ∷ ParseTagRes → MParser STree
 continueFromTag (SectionBegin inverted name) = do
   textNodes ← flushText
   state@(MustacheState
-    { currentSectionName = previousSection }) ← getState
-  putState $ state { currentSectionName = return name }
+    { currentSectionName = previousSection }) ← get
+  put $ state { currentSectionName = return name }
   innerSectionContent ← parseText
   let sectionTag =
         if inverted
           then InvertedSection
           else Section
-  modifyState $ \s → s { currentSectionName = previousSection }
+  modify $ \s → s { currentSectionName = previousSection }
   outerSectionContent ← parseText
   return (textNodes ⊕ [sectionTag name innerSectionContent] ⊕ outerSectionContent)
 continueFromTag (SectionEnd name) = do
   (MustacheState
-    { currentSectionName }) ← getState
+    { currentSectionName }) ← get
   case currentSectionName of
     Just name' | name' ≡ name → flushText
-    Just name' → parserFail $ "Expected closing sequence for \"" ⊕ show name ⊕ "\" got \"" ⊕ show name' ⊕ "\"."
-    Nothing → parserFail $ "Encountered closing sequence for \"" ⊕ show name ⊕ "\" which has never been opened."
+    Just name' → fail $ "Expected closing sequence for \"" ⊕ show name ⊕ "\" got \"" ⊕ show name' ⊕ "\"."
+    Nothing → fail $ "Encountered closing sequence for \"" ⊕ show name ⊕ "\" which has never been opened."
 continueFromTag (Tag tag) = do
   textNodes    ← flushText
   furtherNodes ← parseText
@@ -258,60 +270,74 @@ continueFromTag HandledTag = parseText
 
 switchOnTag ∷ MParser ParseTagRes
 switchOnTag = do
-  (MustacheState { sDelimiters = ( _, end )}) ← getState
+  (MustacheState { sDelimiters = ( _, end )}) ← get
 
-  choice
-    [ SectionBegin False <$> (try (char sectionBegin) ≫ genParseTagEnd (∅))
+  P.choice
+    [ SectionBegin False <$> (lift (P.char sectionBegin) ≫ genParseTagEnd (∅))
     , SectionEnd
-        <$> (try (char sectionEnd) ≫ genParseTagEnd (∅))
+        <$> (lift (P.char sectionEnd) ≫ genParseTagEnd (∅))
     , Tag ∘ Variable False
-        <$> (try (char unescape1) ≫ genParseTagEnd (∅))
+        <$> (lift (P.char unescape1) ≫ genParseTagEnd (∅))
     , Tag ∘ Variable False
-        <$> (try (char (fst unescape2)) ≫ genParseTagEnd (return $ snd unescape2))
+        <$> do
+          lift $ void $ P.char $ fst unescape2
+          genParseTagEnd $ T.singleton $ snd unescape2
     , Tag ∘ Partial Nothing
-        <$> (try (char partialBegin) ≫ spaces ≫ (noneOf (nub end) `manyTill` try (spaces ≫ string end)))
+        <$> lift (do
+          void $ P.char partialBegin
+          P.skipSpace
+          P.satisfy (P.notInClass (T.unpack end)) `P.manyTill` P.try (P.skipSpace ≫ P.string end)
+        )
     , return HandledTag
-        << (try (char delimiterChange) ≫ parseDelimChange)
+        << (lift (P.char delimiterChange) ≫ parseDelimChange)
     , SectionBegin True
-        <$> (try (char invertedSectionBegin) ≫ genParseTagEnd (∅) ≫= \case
+        <$> do
+          lift $ void $ P.char invertedSectionBegin
+          tagEnd ← genParseTagEnd (∅)
+          case tagEnd of
               n@(NamedData _) → return n
-              _ → parserFail "Inverted Sections can not be implicit."
-            )
-    , return HandledTag << (try (char comment) ≫ manyTill anyChar (try $ string end))
+              _ → fail "Inverted Sections can not be implicit."
+
+    , return HandledTag << lift (P.char comment ≫ P.manyTill P.anyChar (P.string end))
     , Tag . Variable True
         <$> genParseTagEnd (∅)
     ]
   where
     parseDelimChange = do
-      (MustacheState { sDelimiters = ( _, end )}) ← getState
-      spaces
-      delim1 ← allowedDelimiterCharacter `manyTill` space
-      spaces
-      delim2 ← allowedDelimiterCharacter `manyTill` try (spaces ≫ string (delimiterChange : end))
-      when (delim1 ≡ (∅) ∨ delim2 ≡ (∅))
-        $ parserFail "Tags must contain more than 0 characters"
-      oldState ← getState
-      putState $ oldState { sDelimiters = (delim1, delim2) }
+      (MustacheState { sDelimiters = ( _, end )}) ← get
+      (delim1, delim2) ← lift $ do
+        P.skipSpace
+        delim1 ← allowedDelimiterCharacter `P.manyTill` P.space
+        P.skipSpace
+        delim2 ← allowedDelimiterCharacter `P.manyTill` P.try (P.skipSpace ≫ P.string (T.cons delimiterChange end))
+        when (delim1 ≡ (∅) ∨ delim2 ≡ (∅))
+          $ fail "Tags must contain more than 0 characters"
+        return (delim1, delim2)
+      modify $ \oldState → oldState { sDelimiters = (T.pack delim1, T.pack delim2) }
 
 
-genParseTagEnd ∷ String → MParser DataIdentifier
+genParseTagEnd ∷ T.Text → MParser DataIdentifier
 genParseTagEnd emod = do
-  (MustacheState { sDelimiters = ( start, end ) }) ← getState
+  (MustacheState { sDelimiters = ( start, end ) }) ← get
 
   let nEnd = emod ⊕ end
-      disallowed = nub $ nestingSeparator : start ⊕ end
+      disallowed = nub $ nestingSeparator : T.unpack (start ⊕ end)
 
-      parseOne :: MParser [Text]
+      parseOne :: P.Parser [T.Text]
       parseOne = do
 
-        one ← noneOf disallowed
-          `manyTill` lookAhead
-            (try (spaces ≫ void (string nEnd))
-            <|> try (void $ char nestingSeparator))
+        one ← P.satisfy (P.notInClass disallowed)
+          `P.manyTill`
+            (P.try (P.skipSpace ≫ void (P.string nEnd))
+            <|> void (P.char nestingSeparator))
 
-        others ← (char nestingSeparator ≫ parseOne)
-                  <|> (const (∅) <$> (spaces ≫ string nEnd))
-        return $ pack one : others
-  spaces
-  (try (char implicitIterator) ≫ spaces ≫ string nEnd ≫ return Implicit)
-    <|> (NamedData <$> parseOne)
+        others ← (P.char nestingSeparator ≫ parseOne)
+                  <|> (const (∅) <$> (P.skipSpace ≫ P.string nEnd))
+        return $ T.pack one : others
+  lift $ do P.skipSpace
+            (do
+              void $ P.char implicitIterator
+              P.skipSpace
+              void $ P.string nEnd
+              return Implicit
+              ) <|> (NamedData <$> parseOne)

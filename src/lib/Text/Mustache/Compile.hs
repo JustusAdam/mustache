@@ -31,8 +31,6 @@ import           System.Directory
 import           System.FilePath
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
-import           Data.Attoparsec.Error
-import           Data.Attoparsec.Pos
 import           Text.Printf
 
 
@@ -47,12 +45,12 @@ import           Text.Printf
   A reference to the included template will be found in each including templates
   'partials' section.
 -}
-automaticCompile ∷ [FilePath] → FilePath → IO (Either ParseError Template)
+automaticCompile ∷ [FilePath] → FilePath → IO (Either String Template)
 automaticCompile searchSpace = compileTemplateWithCache searchSpace (∅)
 
 
 -- | Compile the template with the search space set to only the current directory
-localAutomaticCompile ∷ FilePath → IO (Either ParseError Template)
+localAutomaticCompile ∷ FilePath → IO (Either String Template)
 localAutomaticCompile = automaticCompile ["."]
 
 
@@ -63,14 +61,14 @@ localAutomaticCompile = automaticCompile ["."]
 compileTemplateWithCache ∷ [FilePath]
                          → TemplateCache
                          → FilePath
-                         → IO (Either ParseError Template)
+                         → IO (Either String Template)
 compileTemplateWithCache searchSpace templates initName =
   runEitherT $ evalStateT (compile' initName) $ flattenPartials templates
   where
     compile' ∷ FilePath
              → StateT
                 (HM.HashMap String Template)
-                (EitherT ParseError IO)
+                (EitherT String IO)
                 Template
     compile' name' = do
       templates' ← get
@@ -98,8 +96,8 @@ cacheFromList = flattenPartials ∘ fromList ∘ fmap (name &&& id)
 
 -- | Compiles a 'Template' directly from 'Text' without checking for missing partials.
 -- the result will be a 'Template' with an empty 'partials' cache.
-compileTemplate ∷ String → Text → Either ParseError Template
-compileTemplate name' = fmap (flip (Template name') (∅)) ∘ parse name'
+compileTemplate ∷ String → Text → Either String Template
+compileTemplate name' = fmap (flip (Template name') (∅)) ∘ parse
 
 
 {-|
@@ -133,7 +131,7 @@ flattenPartials = stuffWith $ foldrWithKey $ insertWith discard
   This trows 'ParseError's to be compatible with the internal Either Monad of
   'compileTemplateWithCache'.
 -}
-getFile ∷ [FilePath] → FilePath → EitherT ParseError IO Text
+getFile ∷ [FilePath] → FilePath → EitherT String IO Text
 getFile [] fp = throwError $ fileNotFound fp
 getFile (templateDir : xs) fp =
   lift (doesFileExist filePath) ≫=
@@ -146,5 +144,5 @@ getFile (templateDir : xs) fp =
 
 -- ERRORS
 
-fileNotFound ∷ FilePath → ParseError
-fileNotFound fp = newErrorMessage (Message $ printf "Template file '%s' not found" fp) (initialPos fp)
+fileNotFound ∷ FilePath → String
+fileNotFound =  printf "Template file '%s' not found"
