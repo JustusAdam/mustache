@@ -36,6 +36,7 @@ import           Prelude                hiding (length, lines, unlines)
 import           Prelude.Unicode
 import           Text.Mustache.Internal
 import           Text.Mustache.Types
+import qualified Data.Text.Lazy as LT
 
 
 {-|
@@ -54,15 +55,15 @@ substitute t = substituteValue t ∘ toMustache
 -}
 substituteValue ∷ Template → Value → Text
 substituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
-  joinSubstituted (substitute' (Context (∅) dataStruct)) cAst
+  LT.toStrict $ joinSubstituted (substitute' (Context (∅) dataStruct)) cAst
   where
     joinSubstituted f = fold ∘ fmap f
 
     -- Main substitution function
-    substitute' ∷ Context Value → Node Text → Text
+    substitute' ∷ Context Value → Node Text → LT.Text
 
     -- subtituting text
-    substitute' _ (TextBlock t) = t
+    substitute' _ (TextBlock t) = LT.fromStrict t
 
     -- substituting a whole section (entails a focus shift)
     substitute' (Context parents focus@(Array a)) (Section Implicit secSTree)
@@ -178,7 +179,7 @@ innerSearch _      _          = Nothing
 
 
 -- | Converts values to Text as required by the mustache standard
-toString ∷ Value → Text
-toString (String t) = t
-toString (Number n) = either (pack ∘ show) (pack ∘ show) (floatingOrInteger n ∷ Either Double Integer)
-toString e          = pack $ show e
+toString ∷ Value → LT.Text
+toString (String t) = LT.fromStrict t
+toString (Number n) = either (LT.pack ∘ show) (LT.pack ∘ show) (floatingOrInteger n ∷ Either Double Integer)
+toString e          = LT.pack $ show e

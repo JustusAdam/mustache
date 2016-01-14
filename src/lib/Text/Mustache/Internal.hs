@@ -15,7 +15,7 @@ module Text.Mustache.Internal (uncons, escapeXMLText) where
 
 import           Data.Char       (ord)
 import qualified Data.IntMap     as IntMap
-import qualified Data.Text       as T
+import qualified Data.Text.Lazy as LT
 import           Prelude.Unicode
 
 
@@ -24,8 +24,8 @@ uncons []     = Nothing
 uncons (x:xs) = return (x, xs)
 
 
-escapeXMLText :: T.Text -> T.Text
-escapeXMLText = T.pack ∘ escapeXML ∘ T.unpack
+escapeXMLText :: LT.Text -> LT.Text
+escapeXMLText = LT.pack ∘ escapeXML ∘ LT.unpack
 
 
 escapeXML :: String -> String

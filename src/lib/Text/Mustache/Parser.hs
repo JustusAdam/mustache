@@ -47,6 +47,8 @@ import           Prelude                as Prel
 import           Prelude.Unicode
 import           Text.Mustache.Types
 import           Text.Parsec            as P hiding (endOfLine, parse)
+import qualified Data.Text.Lazy as LT
+import Data.Monoid ((<>))
 
 
 -- | Initial configuration for the parser
@@ -58,7 +60,7 @@ data MustacheConf = MustacheConf
 -- | User state for the parser
 data MustacheState = MustacheState
   { sDelimiters        ∷ (String, String)
-  , textStack          ∷ Text
+  , textStack          ∷ LT.Text
   , isBeginngingOfLine ∷ Bool
   , currentSectionName ∷ Maybe DataIdentifier
   }
@@ -165,7 +167,7 @@ parseText = do
 
 
 appendStringStack ∷ String → Parser ()
-appendStringStack t = modifyState (\s → s { textStack = textStack s ⊕ pack t})
+appendStringStack t = modifyState (\s -> s { textStack = textStack s <> LT.pack t})
 
 
 continueLine ∷ Parser STree
@@ -185,9 +187,9 @@ flushText ∷ Parser STree
 flushText = do
   s@(MustacheState { textStack = text }) ← getState
   putState $ s { textStack = (∅) }
-  return $ if T.null text
+  return $ if LT.null text
               then []
-              else [TextBlock text]
+              else [TextBlock $ LT.toStrict text]
 
 
 finishFile ∷ Parser STree
