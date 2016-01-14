@@ -1,0 +1,9 @@
+person:
+  name: James
+  age: 34
+  occupation: Fireman
+dogs:
+  - name: tony
+    age: 4
+  - name: tim
+    age: 9

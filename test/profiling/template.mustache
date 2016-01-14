@@ -1,0 +1,23 @@
+<html>
+<head>
+  <title> { an adventure }, really</title>
+</head>
+
+<body>
+  {{# person }}
+    <h3>{{ name }}</h3>
+    <span>{{ age }}</span>
+  {{/ person }}
+  <div>
+    {<ul>
+      {{# dogs }}
+        {{=<< >>=}}
+        <li>
+          <<> test/profiling/partial.mustache>>
+        </li>
+        <<={{ }}=>>
+      {{/ dogs }}
+    </ul>}
+  </div>
+</body>
+</html>
