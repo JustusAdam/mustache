@@ -15,3 +15,4 @@ cabal.sandbox.config
 *.aux
 *.hp
 .DS_Store
+.stack-work/

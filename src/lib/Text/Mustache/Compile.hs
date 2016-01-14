@@ -21,7 +21,6 @@ import           Control.Monad.State
 import           Control.Monad.Trans.Either
 import           Control.Monad.Unicode
 import           Data.Bool
-import           Data.Function.JAExtra
 import           Data.HashMap.Strict        as HM
 import           Data.Monoid.Unicode        ((∅))
 import           Data.Text                  hiding (concat, find, map, uncons)
@@ -122,7 +121,7 @@ getPartials' _                     = (∅)
 
 
 flattenPartials ∷ TemplateCache → TemplateCache
-flattenPartials = stuffWith $ foldrWithKey $ insertWith discard
+flattenPartials m = foldrWithKey (insertWith (\_ b -> b)) m m
 
 
 {-|
