@@ -30,7 +30,7 @@ source-repository this
   type:     git
   branch:   master
   location: git://github.com/JustusAdam/mustache.git
-  tag:      v0.5.1.0rc-7
+  tag:      v1.0
 
 
 
