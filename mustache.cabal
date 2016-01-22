@@ -14,7 +14,7 @@ author:              Justus Adam
 maintainer:          dev@justus.science
 homepage:            https://github.com/JustusAdam/mustache
 bug-reports:         https://github.com/JustusAdam/mustache/issues
-copyright:           (c) 2015 Justus Adam
+copyright:           (c) 2015, 2016 Justus Adam
 category:            Development
 build-type:          Simple
 extra-source-files:  README.md CHANGELOG.md
