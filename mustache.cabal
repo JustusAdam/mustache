@@ -35,17 +35,20 @@ source-repository this
 
 
 library
-  exposed-modules:     Text.Mustache,
-                       Text.Mustache.Types,
-                       Text.Mustache.Parser,
-                       Text.Mustache.Compile,
-                       Text.Mustache.Render
+  exposed-modules:     Text.Mustache
+                     , Text.Mustache.Types
+                     , Text.Mustache.Parser
+                     , Text.Mustache.Compile
+                     , Text.Mustache.Render
   other-modules:       Text.Mustache.Internal
-  other-extensions:    NamedFieldPuns, OverloadedStrings, LambdaCase, TupleSections
+  other-extensions:    NamedFieldPuns
+                     , OverloadedStrings
+                     , LambdaCase
+                     , TupleSections
   build-depends:       base >=4.7 && <5
-                     , text >=1.2 && <1.3
-                     , parsec >=3.1 && <3.2
-                     , mtl >=2.2 && <2.3
+                     , text
+                     , parsec
+                     , mtl
                      , either
                      , aeson
                      , unordered-containers
@@ -64,15 +67,15 @@ library
 
 executable haskell-mustache
   main-is:             Main.hs
-  build-depends:       base >=4.7 && <5,
-                       mustache,
-                       bytestring,
-                       yaml,
-                       aeson,
-                       cmdargs,
-                       text,
-                       filepath,
-                       base-unicode-symbols
+  build-depends:       base >=4.7 && <5
+                     , mustache
+                     , bytestring
+                     , yaml
+                     , aeson
+                     , cmdargs
+                     , text
+                     , filepath
+                     , base-unicode-symbols
   default-language:    Haskell2010
   hs-source-dirs:      src/bin
 
@@ -80,18 +83,18 @@ executable haskell-mustache
 test-suite unit-tests
   main-is:            Spec.hs
   type:               exitcode-stdio-1.0
-  build-depends:      base >=4.7 && <5,
-                      hspec,
-                      text,
-                      mustache,
-                      aeson,
-                      unordered-containers,
-                      yaml,
-                      filepath,
-                      process,
-                      temporary,
-                      directory,
-                      base-unicode-symbols
+  build-depends:      base >=4.7 && <5
+                    , hspec
+                    , text
+                    , mustache
+                    , aeson
+                    , unordered-containers
+                    , yaml
+                    , filepath
+                    , process
+                    , temporary
+                    , directory
+                    , base-unicode-symbols
   hs-source-dirs:     test/unit
   default-language:   Haskell2010
 
@@ -99,17 +102,17 @@ test-suite unit-tests
 test-suite language-specifications
   main-is:            Language.hs
   type:               exitcode-stdio-1.0
-  build-depends:      base >=4.7 && <5,
-                      hspec,
-                      text,
-                      mustache,
-                      aeson,
-                      unordered-containers,
-                      yaml,
-                      filepath,
-                      process,
-                      temporary,
-                      directory,
-                      base-unicode-symbols
+  build-depends:      base >=4.7 && <5
+                    , hspec
+                    , text
+                    , mustache
+                    , aeson
+                    , unordered-containers
+                    , yaml
+                    , filepath
+                    , process
+                    , temporary
+                    , directory
+                    , base-unicode-symbols
   hs-source-dirs:     test/integration
   default-language:   Haskell2010
