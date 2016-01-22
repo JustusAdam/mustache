@@ -48,7 +48,7 @@ library
   build-depends:       base >=4.7 && <5
                      , text
                      , parsec
-                     , mtl
+                     , mtl >= 2.2.1
                      , either
                      , aeson
                      , unordered-containers
