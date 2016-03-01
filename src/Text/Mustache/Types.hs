@@ -12,6 +12,7 @@ Portability : POSIX
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE UnicodeSyntax         #-}
+{-# LANGUAGE BangPatterns #-}
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
@@ -44,14 +45,17 @@ import qualified Data.Vector         as V
 import           Prelude.Unicode
 
 -- | Syntax tree for a mustache template
-type STree = [Node Text]
+type STree = ASTree Text
+
+
+type ASTree α = [Node α] 
 
 
 -- | Basic values composing the STree
 data Node α
   = TextBlock α
-  | Section DataIdentifier STree
-  | InvertedSection DataIdentifier STree
+  | Section DataIdentifier (ASTree α)
+  | InvertedSection DataIdentifier (ASTree α)
   | Variable Bool DataIdentifier
   | Partial (Maybe α) FilePath
   deriving (Show, Eq)
@@ -78,12 +82,12 @@ data Context α = Context [α] α
 
 -- | Internal value representation
 data Value
-  = Object Object
-  | Array  Array
-  | Number Scientific
-  | String Text
+  = Object !Object
+  | Array  !Array
+  | Number !Scientific
+  | String !Text
   | Lambda (Context Value → STree → STree)
-  | Bool   Bool
+  | Bool   !Bool
   | Null
 
 
