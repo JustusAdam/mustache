@@ -18,9 +18,9 @@ env:
 - ARGS="--resolver lts"
 - ARGS="--resolver lts-4"
 - ARGS="--resolver nightly"
-
-allow_failures:
-- env: ARGS="--resolver nightly"
+matrix:
+  allow_failures:
+    - env: ARGS="--resolver nightly"
 
 before_install:
 # Download and unpack the stack executable
