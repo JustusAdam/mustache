@@ -39,7 +39,6 @@ module Text.Mustache.Parser
 import           Control.Monad
 import           Control.Monad.Unicode
 import           Data.Char              (isAlphaNum, isSpace)
-import           Data.Functor           ((<$>))
 import           Data.List              (nub)
 import           Data.Monoid.Unicode    ((∅), (⊕))
 import           Data.Text              as T (Text, null, pack)

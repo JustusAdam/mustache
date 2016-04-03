@@ -1,9 +1,10 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NamedFieldPuns    #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax     #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE QuasiQuotes       #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE NamedFieldPuns       #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE UnicodeSyntax        #-}
+{-# LANGUAGE TemplateHaskell      #-}
+{-# LANGUAGE QuasiQuotes          #-}
 module Main where
 
 

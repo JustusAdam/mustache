@@ -7,6 +7,7 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
+{-# OPTIONS_GHC -fno-warn-missing-fields #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -159,14 +160,14 @@ getFile (templateDir : xs) fp =
 -- Partials are not supported in compile time templates.
 
 mustache ∷ QuasiQuoter
-mustache = QuasiQuoter {quoteExp = \unprocessedTemplate -> do
-  l <- location
+mustache = QuasiQuoter {quoteExp = \unprocessedTemplate → do
+  l ← location
   compileTemplateTH (fileAndLine l) unprocessedTemplate }
 
-fileAndLine ∷ Loc -> String
+fileAndLine ∷ Loc → String
 fileAndLine loc = loc_filename loc ++ ":" ++ (show ∘ fst ∘ loc_start $ loc)
 
-compileTemplateTH ∷ String -> String -> Q Exp
+compileTemplateTH ∷ String → String → Q Exp
 compileTemplateTH filename unprocessed =
   either (fail ∘ ("Parse error in mustache template: " ++) ∘ show) THS.lift $ compileTemplate filename (pack unprocessed)
 
