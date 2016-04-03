@@ -8,9 +8,11 @@ Stability   : experimental
 Portability : POSIX
 -}
 {-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
 module Text.Mustache.Compile
   ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
-  , compileTemplate, cacheFromList, getPartials, getFile
+  , compileTemplate, cacheFromList, getPartials, getFile, mustache
   ) where
 
 
@@ -25,6 +27,9 @@ import           Data.HashMap.Strict        as HM
 import           Data.Monoid.Unicode        ((∅))
 import           Data.Text                  hiding (concat, find, map, uncons)
 import qualified Data.Text.IO               as TIO
+import           Language.Haskell.TH        (Q, Exp, Loc, location, loc_filename, loc_start)
+import qualified Language.Haskell.TH.Syntax as THS
+import           Language.Haskell.TH.Quote  (QuasiQuoter(QuasiQuoter), quoteExp)
 import           Prelude.Unicode
 import           System.Directory
 import           System.FilePath
@@ -33,7 +38,6 @@ import           Text.Mustache.Types
 import           Text.Parsec.Error
 import           Text.Parsec.Pos
 import           Text.Printf
-
 
 {-|
   Compiles a mustache template provided by name including the mentioned partials.
@@ -141,6 +145,30 @@ getFile (templateDir : xs) fp =
       (lift $ TIO.readFile filePath)
   where
     filePath = templateDir </> fp
+
+
+-- |
+-- Compile a mustache 'Template' at compile time. Usage:
+--
+-- > {-# LANGUAGE QuasiQuotes #-}
+-- > import Text.Mustache.Compile (mustache)
+-- >
+-- > foo :: Template
+-- > foo = [mustache|This is my inline {{ template }} created at compile time|]
+--
+-- Partials are not supported in compile time templates.
+
+mustache ∷ QuasiQuoter
+mustache = QuasiQuoter {quoteExp = \unprocessedTemplate -> do
+  l <- location
+  compileTemplateTH (fileAndLine l) unprocessedTemplate }
+
+fileAndLine ∷ Loc -> String
+fileAndLine loc = loc_filename loc ++ ":" ++ (show ∘ fst ∘ loc_start $ loc)
+
+compileTemplateTH ∷ String -> String -> Q Exp
+compileTemplateTH filename unprocessed =
+  either (fail ∘ ("Parse error in mustache template: " ++) ∘ show) THS.lift $ compileTemplate filename (pack unprocessed)
 
 
 -- ERRORS

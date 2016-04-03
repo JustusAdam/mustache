@@ -2,16 +2,20 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax     #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE QuasiQuotes       #-}
 module Main where
 
 
 import           Control.Applicative  ((<$>), (<*>))
 import           Data.Either
+import           Data.Function        (on)
 import qualified Data.Text            as T
 import           Test.Hspec
 import           Text.Mustache
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
+import           Text.Mustache.Compile
 import           Data.Monoid
 
 
@@ -191,9 +195,19 @@ converterSpec =
     it "converts a String" $
       toMustache ("My String" :: String) `shouldSatisfy` \case (String "My String") -> True; _ -> False
 
+-- This is a one-off instance to define how we want the Spec to compare templates
+instance Eq Template where
+  (==) = (==) `on` ast
+
+quasiQuotedSpec :: Spec
+quasiQuotedSpec =
+  describe "mustacheTemplateQuasiQuoter" $
+    it "creates templates at compile time" $
+      Right [mustache|This {{ template }} was injected at compile time|] `shouldBe` compileTemplate "Template Name" "This {{ template }} was injected at compile time"
 
 main :: IO ()
 main = hspec $ do
   parserSpec
   substituteSpec
   converterSpec
+  quasiQuotedSpec
