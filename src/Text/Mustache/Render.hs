@@ -48,7 +48,7 @@ instance Functor SubstitutionResult where
   fmap f (SubstitutionResult e r) = SubstitutionResult e (f r)
 
 instance Applicative SubstitutionResult where
-  pure = noErrors
+  pure = SubstitutionResult []
   a <*> b = do
     a' <- a
     b' <- b
@@ -72,10 +72,6 @@ data SubstitutionError
 instance Monoid α => Monoid (SubstitutionResult α) where
   mappend (SubstitutionResult e1 r1) (SubstitutionResult e2 r2) = SubstitutionResult (e1 <> e2) (r1 <> r2)
   mempty = SubstitutionResult mempty mempty
-
-
-noErrors :: α -> SubstitutionResult α
-noErrors = SubstitutionResult []
 
 
 oneError :: Monoid α => SubstitutionError -> SubstitutionResult α
@@ -111,7 +107,7 @@ checkedSubstituteValue (Template { ast = cAst, partials = cPartials }) dataStruc
     substitute' ∷ Context Value → Node Text → SubstitutionResult Text
 
     -- subtituting text
-    substitute' _ (TextBlock t) = noErrors t
+    substitute' _ (TextBlock t) = pure t
 
     -- substituting a whole section (entails a focus shift)
     substitute' (Context parents focus@(Array a)) (Section Implicit secSTree)
@@ -209,16 +205,15 @@ search ∷ Context Value → [Key] → Maybe Value
 search _ [] = Nothing
 search ctx keys@(_:nextKeys) = go ctx keys ≫= innerSearch nextKeys
   where
-  go _ [] = Nothing
-  go (Context parents focus) val@(x:_) =
-    ( case focus of
-      (Object o) → HM.lookup x o
-      _          → Nothing
-    )
-    <|> ( do
-          (newFocus, newParents) ← uncons parents
+    go _ [] = Nothing
+    go (Context parents focus) val@(x:_) = searchCurrentContext <|> searchParentContext
+      where
+        searchCurrentContext = case focus of
+                                  (Object o) → HM.lookup x o
+                                  _          → Nothing
+        searchParentContext = do
+          (newFocus, newParents) <- uncons parents
           go (Context newParents newFocus) val
-        )
 
 indentBy ∷ Text → Node Text → Node Text
 indentBy indent p@(Partial (Just indent') name')
@@ -239,6 +234,6 @@ innerSearch _      _          = Nothing
 
 -- | Converts values to Text as required by the mustache standard
 toString ∷ Value → SubstitutionResult Text
-toString (String t) = noErrors t
-toString (Number n) = noErrors $ either (pack ∘ show) (pack ∘ show) (floatingOrInteger n ∷ Either Double Integer)
+toString (String t) = pure t
+toString (Number n) = pure $ either (pack ∘ show) (pack ∘ show) (floatingOrInteger n ∷ Either Double Integer)
 toString e          = SubstitutionResult [DirectlyRenderedValue e] $ pack $ show e
