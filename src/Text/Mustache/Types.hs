@@ -2,7 +2,7 @@
 Module      : $Header$
 Description : Types and conversions
 Copyright   : (c) Justus Adam, 2015
-License     : LGPL-3
+License     : BSD3
 Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
