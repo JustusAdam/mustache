@@ -1,28 +1,27 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE LambdaCase           #-}
-{-# LANGUAGE NamedFieldPuns       #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE UnicodeSyntax        #-}
-{-# LANGUAGE TemplateHaskell      #-}
-{-# LANGUAGE QuasiQuotes          #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Main where
 
 
-import           Control.Applicative  ((<$>), (<*>))
+import           Control.Applicative   ((<$>), (<*>))
 import           Data.Either
-import           Data.Function        (on)
-import qualified Data.Text            as T
+import           Data.Function         (on)
+import           Data.Monoid
+import qualified Data.Text             as T
 import           Test.Hspec
 import           Text.Mustache
+import           Text.Mustache.Compile
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
-import           Text.Mustache.Compile
-import           Data.Monoid
 
 
-escaped ∷ Bool
+escaped :: Bool
 escaped = True
-unescaped ∷ Bool
+unescaped :: Bool
 unescaped = False
 
 

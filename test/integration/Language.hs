@@ -1,8 +1,8 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax     #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE UnicodeSyntax     #-}
 module Main where
 
 import           Control.Applicative  ((<$>), (<*>))
@@ -68,13 +68,13 @@ instance FromJSON LangSpecTest where
   parseJSON _ = mzero
 
 
-(&) ∷ a → (a → b) → b
+(&) :: a -> (a -> b) -> b
 (&) = flip ($)
 
 
-getOfficialSpecRelease ∷ FilePath -> FilePath -> FilePath -> FilePath → IO ()
+getOfficialSpecRelease :: FilePath -> FilePath -> FilePath -> FilePath -> IO ()
 getOfficialSpecRelease tempdir langspecDir releaseFile releaseURL  = do
-  currentDirectory ← getCurrentDirectory
+  currentDirectory <- getCurrentDirectory
   setCurrentDirectory tempdir
   createDirectory langspecDir
   callProcess "curl" [releaseURL, "-o", releaseFile]
@@ -82,21 +82,21 @@ getOfficialSpecRelease tempdir langspecDir releaseFile releaseURL  = do
   setCurrentDirectory currentDirectory
 
 
-testOfficialLangSpec ∷ FilePath → Spec
+testOfficialLangSpec :: FilePath -> Spec
 testOfficialLangSpec dir = do
-  allFiles ← runIO $ getDirectoryContents dir
+  allFiles <- runIO $ getDirectoryContents dir
   let testfiles = allFiles
         & filter ((`elem` [".yml", ".yaml"]) . takeExtension)
       -- Filters the lambda tests for now.
         & filter (not . ("~" `isPrefixOf`) . takeFileName)
-  for_ testfiles $ \filename →
+  for_ testfiles $ \filename ->
     runIO (decodeFile (dir </> filename)) >>= \case
       Nothing -> describe ("File: " <> takeFileName filename) $
         it "loads the data file" $
           expectationFailure "Data file could not be parsed"
-      Just (LangSpecFile { tests }) →
+      Just (LangSpecFile { tests }) ->
         describe ("File: " <> takeFileName filename) $
-          for_ tests $ \(LangSpecTest { .. }) →
+          for_ tests $ \(LangSpecTest { .. }) ->
             it ("Name: " <> name <> "  Description: " <> specDescription) $
               let
                 compiled = do
@@ -105,8 +105,8 @@ testOfficialLangSpec dir = do
                   return $ template' { partials = partials' }
               in
                 case compiled of
-                  Left m → expectationFailure $ show m
-                  Right tmp →
+                  Left m -> expectationFailure $ show m
+                  Right tmp ->
                     substituteValue tmp (toMustache specData) `shouldBe` expected
 
 
@@ -115,7 +115,7 @@ main =
   void $
     withSystemTempDirectory
       "mustache-test-resources"
-      $ \tempdir → do
+      $ \tempdir -> do
         for_ langspecs $ \(langspecDir, _, releaseFile, releaseURL) ->
           getOfficialSpecRelease tempdir langspecDir releaseFile releaseURL
         hspec $

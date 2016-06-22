@@ -9,7 +9,6 @@ Portability : POSIX
 
 escapeXML and xmlEntities curtesy to the tagsoup library.
 -}
-{-# LANGUAGE UnicodeSyntax #-}
 module Text.Mustache.Internal (uncons, escapeXMLText) where
 
 
@@ -19,13 +18,13 @@ import qualified Data.Text       as T
 import           Prelude.Unicode
 
 
-uncons ∷ [α] → Maybe (α, [α])
+uncons :: [α] -> Maybe (α, [α])
 uncons []     = Nothing
 uncons (x:xs) = return (x, xs)
 
 
 escapeXMLText :: T.Text -> T.Text
-escapeXMLText = T.pack ∘ escapeXML ∘ T.unpack
+escapeXMLText = T.pack . escapeXML . T.unpack
 
 
 escapeXML :: String -> String

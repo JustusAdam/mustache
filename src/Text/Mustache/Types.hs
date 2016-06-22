@@ -11,10 +11,8 @@ Portability : POSIX
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TupleSections         #-}
-{-# LANGUAGE UnicodeSyntax         #-}
-{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TupleSections         #-}
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
@@ -44,7 +42,7 @@ import           Data.Scientific
 import           Data.Text
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
-import           Language.Haskell.TH.Lift (Lift(lift), deriveLift)
+import           Language.Haskell.TH.Lift (Lift (lift), deriveLift)
 import           Prelude.Unicode
 
 -- | Syntax tree for a mustache template
@@ -89,7 +87,7 @@ data Value
   | Array  !Array
   | Number !Scientific
   | String !Text
-  | Lambda (Context Value → STree → STree)
+  | Lambda (Context Value -> STree -> STree)
   | Bool   !Bool
   | Null
 
@@ -105,25 +103,25 @@ instance Show Value where
 
 -- | Conversion class
 class ToMustache ω where
-  toMustache ∷ ω → Value
-  listToMustache ∷ [ω] → Value
-  listToMustache = Array ∘ V.fromList ∘ fmap toMustache
+  toMustache :: ω -> Value
+  listToMustache :: [ω] -> Value
+  listToMustache = Array . V.fromList . fmap toMustache
 
 instance ToMustache Float where
-  toMustache = Number ∘ fromFloatDigits
+  toMustache = Number . fromFloatDigits
 
 instance ToMustache Double where
-  toMustache = Number ∘ fromFloatDigits
+  toMustache = Number . fromFloatDigits
 
 instance ToMustache Integer where
-  toMustache = Number ∘ fromInteger
+  toMustache = Number . fromInteger
 
 instance ToMustache Int where
   toMustache = toMustache ∘ toInteger
 
 instance ToMustache Char where
-  toMustache = toMustache ∘ (:[])
-  listToMustache = String ∘ pack
+  toMustache = toMustache . (:[])
+  listToMustache = String . pack
 
 instance ToMustache Value where
   toMustache = id
@@ -138,75 +136,75 @@ instance ToMustache Text where
   toMustache = String
 
 instance ToMustache LT.Text where
-  toMustache = String ∘ LT.toStrict
+  toMustache = String . LT.toStrict
 
 instance ToMustache Scientific where
   toMustache = Number
 
-instance ToMustache α ⇒ ToMustache [α] where
+instance ToMustache α => ToMustache [α] where
   toMustache = listToMustache
 
-instance ToMustache ω ⇒ ToMustache (V.Vector ω) where
-  toMustache = toMustache ∘ fmap toMustache
+instance ToMustache ω => ToMustache (V.Vector ω) where
+  toMustache = toMustache . fmap toMustache
 
-instance (ToMustache ω) ⇒ ToMustache (Map.Map Text ω) where
+instance (ToMustache ω) => ToMustache (Map.Map Text ω) where
   toMustache = mapInstanceHelper id
 
-instance (ToMustache ω) ⇒ ToMustache (Map.Map LT.Text ω) where
+instance (ToMustache ω) => ToMustache (Map.Map LT.Text ω) where
   toMustache = mapInstanceHelper LT.toStrict
 
-instance (ToMustache ω) ⇒ ToMustache (Map.Map String ω) where
+instance (ToMustache ω) => ToMustache (Map.Map String ω) where
   toMustache = mapInstanceHelper pack
 
 mapInstanceHelper :: ToMustache v => (a -> Text) -> Map.Map a v -> Value
 mapInstanceHelper conv =
   toMustache
-  ∘ Map.foldrWithKey
-    (\k → HM.insert (conv k) ∘ toMustache)
+  . Map.foldrWithKey
+    (\k -> HM.insert (conv k) . toMustache)
     HM.empty
 
-instance ToMustache ω ⇒ ToMustache (HM.HashMap Text ω) where
-  toMustache = toMustache ∘ fmap toMustache
+instance ToMustache ω => ToMustache (HM.HashMap Text ω) where
+  toMustache = toMustache . fmap toMustache
 
-instance ToMustache ω ⇒ ToMustache (HM.HashMap LT.Text ω) where
+instance ToMustache ω => ToMustache (HM.HashMap LT.Text ω) where
   toMustache = hashMapInstanceHelper LT.toStrict
 
-instance ToMustache ω ⇒ ToMustache (HM.HashMap String ω) where
+instance ToMustache ω => ToMustache (HM.HashMap String ω) where
   toMustache = hashMapInstanceHelper pack
 
 hashMapInstanceHelper :: ToMustache v => (a -> Text) -> HM.HashMap a v -> Value
 hashMapInstanceHelper conv =
   toMustache
-  ∘ HM.foldrWithKey
-    (\k → HM.insert (conv k) ∘ toMustache)
+  . HM.foldrWithKey
+    (\k -> HM.insert (conv k) . toMustache)
     HM.empty
 
-instance ToMustache (Context Value → STree → STree) where
+instance ToMustache (Context Value -> STree -> STree) where
   toMustache = Lambda
 
-instance ToMustache (Context Value → STree → Text) where
+instance ToMustache (Context Value -> STree -> Text) where
   toMustache = lambdaInstanceHelper id
 
-instance ToMustache (Context Value → STree → LT.Text) where
+instance ToMustache (Context Value -> STree -> LT.Text) where
   toMustache = lambdaInstanceHelper LT.toStrict
 
-instance ToMustache (Context Value → STree → String) where
+instance ToMustache (Context Value -> STree -> String) where
   toMustache = lambdaInstanceHelper pack
 
 lambdaInstanceHelper :: (a -> Text) -> (Context Value -> STree -> a) -> Value
 lambdaInstanceHelper conv f = Lambda wrapper
   where
-    wrapper ∷ Context Value → STree → STree
-    wrapper c lSTree = return ∘ TextBlock $ conv $ f c lSTree
+    wrapper :: Context Value -> STree -> STree
+    wrapper c lSTree = return . TextBlock $ conv $ f c lSTree
 
-instance ToMustache (STree → STree) where
-  toMustache f = toMustache (const f ∷ Context Value → STree → STree)
+instance ToMustache (STree -> STree) where
+  toMustache f = toMustache (const f :: Context Value -> STree -> STree)
 
-instance ToMustache (STree → Text) where
+instance ToMustache (STree -> Text) where
   toMustache f = toMustache wrapper
     where
-      wrapper ∷ Context Value → STree → STree
-      wrapper _ = (return ∘ TextBlock) ∘ f
+      wrapper :: Context Value -> STree -> STree
+      wrapper _ = (return . TextBlock) . f
 
 instance ToMustache Aeson.Value where
   toMustache (Aeson.Object o) = Object $ fmap toMustache o
@@ -216,18 +214,18 @@ instance ToMustache Aeson.Value where
   toMustache (Aeson.Bool   b) = Bool b
   toMustache Aeson.Null       = Null
 
-instance ToMustache ω ⇒ ToMustache (HS.HashSet ω) where
-  toMustache = toMustache ∘ HS.toList
+instance ToMustache ω => ToMustache (HS.HashSet ω) where
+  toMustache = toMustache . HS.toList
 
-instance (ToMustache α, ToMustache β) ⇒ ToMustache (α, β) where
+instance (ToMustache α, ToMustache β) => ToMustache (α, β) where
   toMustache (a, b) = toMustache [toMustache a, toMustache b]
 
 instance (ToMustache α, ToMustache β, ToMustache γ)
-         ⇒ ToMustache (α, β, γ) where
+         => ToMustache (α, β, γ) where
   toMustache (a, b, c) = toMustache [toMustache a, toMustache b, toMustache c]
 
 instance (ToMustache α, ToMustache β, ToMustache γ, ToMustache δ)
-         ⇒ ToMustache (α, β, γ, δ) where
+         => ToMustache (α, β, γ, δ) where
   toMustache (a, b, c, d) = toMustache
     [ toMustache a
     , toMustache b
@@ -240,7 +238,7 @@ instance ( ToMustache α
          , ToMustache γ
          , ToMustache δ
          , ToMustache ε
-         ) ⇒ ToMustache (α, β, γ, δ, ε) where
+         ) => ToMustache (α, β, γ, δ, ε) where
   toMustache (a, b, c, d, e) = toMustache
     [ toMustache a
     , toMustache b
@@ -255,7 +253,7 @@ instance ( ToMustache α
          , ToMustache δ
          , ToMustache ε
          , ToMustache ζ
-         ) ⇒ ToMustache (α, β, γ, δ, ε, ζ) where
+         ) => ToMustache (α, β, γ, δ, ε, ζ) where
   toMustache (a, b, c, d, e, f) = toMustache
     [ toMustache a
     , toMustache b
@@ -272,7 +270,7 @@ instance ( ToMustache α
          , ToMustache ε
          , ToMustache ζ
          , ToMustache η
-         ) ⇒ ToMustache (α, β, γ, δ, ε, ζ, η) where
+         ) => ToMustache (α, β, γ, δ, ε, ζ, η) where
   toMustache (a, b, c, d, e, f, g) = toMustache
     [ toMustache a
     , toMustache b
@@ -291,7 +289,7 @@ instance ( ToMustache α
          , ToMustache ζ
          , ToMustache η
          , ToMustache θ
-         ) ⇒ ToMustache (α, β, γ, δ, ε, ζ, η, θ) where
+         ) => ToMustache (α, β, γ, δ, ε, ζ, η, θ) where
   toMustache (a, b, c, d, e, f, g, h) = toMustache
     [ toMustache a
     , toMustache b
@@ -328,20 +326,20 @@ instance ( ToMustache α
 -- themselves a 'ToMustache' instance, or alternatively if they lack such an
 -- instance but provide an instance for the 'ToJSON' typeclass we can use the
 -- '~=' operator.
-object ∷ [Pair] → Value
-object = Object ∘ HM.fromList
+object :: [Pair] -> Value
+object = Object . HM.fromList
 
 
 -- | Map keys to values that provide a 'ToMustache' instance
 --
 -- Recommended in conjunction with the `OverloadedStrings` extension.
-(~>) ∷ ToMustache ω ⇒ Text → ω → Pair
-(~>) t = (t, ) ∘ toMustache
+(~>) :: ToMustache ω => Text -> ω -> Pair
+(~>) t = (t, ) . toMustache
 {-# INLINEABLE (~>) #-}
 infixr 8 ~>
 
 -- | Unicode version of '~>'
-(↝) ∷ ToMustache ω ⇒ Text → ω → Pair
+(↝) :: ToMustache ω => Text -> ω -> Pair
 (↝) = (~>)
 {-# INLINEABLE (↝) #-}
 infixr 8 ↝
@@ -350,22 +348,22 @@ infixr 8 ↝
 -- | Map keys to values that provide a 'ToJSON' instance
 --
 -- Recommended in conjunction with the `OverloadedStrings` extension.
-(~=) ∷ Aeson.ToJSON ι ⇒ Text → ι → Pair
-(~=) t = (t ~>) ∘ Aeson.toJSON
+(~=) :: Aeson.ToJSON ι => Text -> ι -> Pair
+(~=) t = (t ~>) . Aeson.toJSON
 {-# INLINEABLE (~=) #-}
 infixr 8 ~=
 
 
 -- | Unicode version of '~='
-(⥱) ∷ Aeson.ToJSON ι ⇒ Text → ι → Pair
+(⥱) :: Aeson.ToJSON ι => Text -> ι -> Pair
 (⥱) = (~=)
 {-# INLINEABLE (⥱) #-}
 infixr 8 ⥱
 
 
 -- | Converts a value that can be represented as JSON to a Value.
-mFromJSON ∷ Aeson.ToJSON ι ⇒ ι → Value
-mFromJSON = toMustache ∘ Aeson.toJSON
+mFromJSON :: Aeson.ToJSON ι => ι -> Value
+mFromJSON = toMustache . Aeson.toJSON
 
 
 -- | A collection of templates with quick access via their hashed names
@@ -378,9 +376,9 @@ type Key = Text
   A compiled Template with metadata.
 -}
 data Template = Template
-  { name     ∷ String
-  , ast      ∷ STree
-  , partials ∷ TemplateCache
+  { name     :: String
+  , ast      :: STree
+  , partials :: TemplateCache
   } deriving (Show)
 
 instance Lift TemplateCache where
