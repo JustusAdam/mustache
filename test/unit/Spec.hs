@@ -1,17 +1,22 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NamedFieldPuns    #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE UnicodeSyntax     #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE NamedFieldPuns       #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE UnicodeSyntax        #-}
+{-# LANGUAGE TemplateHaskell      #-}
+{-# LANGUAGE QuasiQuotes          #-}
 module Main where
 
 
 import           Control.Applicative  ((<$>), (<*>))
 import           Data.Either
+import           Data.Function        (on)
 import qualified Data.Text            as T
 import           Test.Hspec
 import           Text.Mustache
 import           Text.Mustache.Parser
 import           Text.Mustache.Types
+import           Text.Mustache.Compile
 import           Data.Monoid
 
 
@@ -191,9 +196,25 @@ converterSpec =
     it "converts a String" $
       toMustache ("My String" :: String) `shouldSatisfy` \case (String "My String") -> True; _ -> False
 
+-- This is a one-off instance to define how we want the Spec to compare templates
+instance Eq Template where
+  (==) = (==) `on` ast
+
+compileTimeSpec :: Spec
+compileTimeSpec =
+  describe "compileTimeCompiling" $ do
+
+    it "creates compiled templates from a QuasiQuoter" $
+      Right [mustache|This {{ template }} was injected at compile time with a quasiquoter|] `shouldBe`
+        compileTemplate "Template Name" "This {{ template }} was injected at compile time with a quasiquoter"
+
+    it "creates compiled templates from an embedded file" $
+      Right $(embedTemplate "test/unit/examples/test-template.txt.mustache") `shouldBe`
+        compileTemplate "Template Name" "This {{ template }} was injected at compile time with an embedded file\n"
 
 main :: IO ()
 main = hspec $ do
   parserSpec
   substituteSpec
   converterSpec
+  compileTimeSpec

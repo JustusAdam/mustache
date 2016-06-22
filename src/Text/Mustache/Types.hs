@@ -7,12 +7,14 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
+{-# OPTIONS_GHC -fno-warn-orphans  #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE UnicodeSyntax         #-}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE TemplateHaskell       #-}
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
@@ -34,21 +36,22 @@ module Text.Mustache.Types
   ) where
 
 
-import qualified Data.Aeson          as Aeson
-import           Data.HashMap.Strict as HM
-import qualified Data.HashSet        as HS
-import qualified Data.Map            as Map
+import qualified Data.Aeson               as Aeson
+import           Data.HashMap.Strict      as HM
+import qualified Data.HashSet             as HS
+import qualified Data.Map                 as Map
 import           Data.Scientific
 import           Data.Text
-import qualified Data.Text.Lazy      as LT
-import qualified Data.Vector         as V
+import qualified Data.Text.Lazy           as LT
+import qualified Data.Vector              as V
+import           Language.Haskell.TH.Lift (Lift(lift), deriveLift)
 import           Prelude.Unicode
 
 -- | Syntax tree for a mustache template
 type STree = ASTree Text
 
 
-type ASTree α = [Node α] 
+type ASTree α = [Node α]
 
 
 -- | Basic values composing the STree
@@ -116,7 +119,7 @@ instance ToMustache Integer where
   toMustache = Number ∘ fromInteger
 
 instance ToMustache Int where
-  toMustache = toMustache . toInteger
+  toMustache = toMustache ∘ toInteger
 
 instance ToMustache Char where
   toMustache = toMustache ∘ (:[])
@@ -379,3 +382,13 @@ data Template = Template
   , ast      ∷ STree
   , partials ∷ TemplateCache
   } deriving (Show)
+
+instance Lift TemplateCache where
+  lift = const [|HM.empty|]
+
+instance Lift Text where
+  lift = lift ∘ unpack
+
+deriveLift ''DataIdentifier
+deriveLift ''Node
+deriveLift ''Template

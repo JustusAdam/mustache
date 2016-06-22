@@ -20,12 +20,12 @@ module Text.Mustache.Render
   ) where
 
 
-import           Control.Applicative    ((<$>), (<|>))
+import           Control.Applicative    ((<|>))
 import           Control.Arrow          (first)
 import           Control.Monad
 import           Control.Monad.Unicode
 import           Data.Foldable          (fold)
-import           Data.HashMap.Strict    as HM hiding (map)
+import           Data.HashMap.Strict    as HM hiding (map, keys)
 import           Data.Maybe             (fromMaybe)
 import           Data.Monoid.Unicode
 import           Data.Scientific        (floatingOrInteger)
