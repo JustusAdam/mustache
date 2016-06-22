@@ -200,15 +200,21 @@ converterSpec =
 instance Eq Template where
   (==) = (==) `on` ast
 
-quasiQuotedSpec :: Spec
-quasiQuotedSpec =
-  describe "mustacheTemplateQuasiQuoter" $
-    it "creates templates at compile time" $
-      Right [mustache|This {{ template }} was injected at compile time|] `shouldBe` compileTemplate "Template Name" "This {{ template }} was injected at compile time"
+compileTimeSpec :: Spec
+compileTimeSpec =
+  describe "compileTimeCompiling" $ do
+
+    it "creates compiled templates from a QuasiQuoter" $
+      Right [mustache|This {{ template }} was injected at compile time with a quasiquoter|] `shouldBe`
+        compileTemplate "Template Name" "This {{ template }} was injected at compile time with a quasiquoter"
+
+    it "creates compiled templates from an embedded file" $
+      Right $(embedTemplate "test/unit/examples/test-template.txt.mustache") `shouldBe`
+        compileTemplate "Template Name" "This {{ template }} was injected at compile time with an embedded file\n"
 
 main :: IO ()
 main = hspec $ do
   parserSpec
   substituteSpec
   converterSpec
-  quasiQuotedSpec
+  compileTimeSpec

@@ -13,7 +13,7 @@ Portability : POSIX
 {-# LANGUAGE QuasiQuotes #-}
 module Text.Mustache.Compile
   ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
-  , compileTemplate, cacheFromList, getPartials, getFile, mustache
+  , compileTemplate, cacheFromList, getPartials, getFile, mustache, embedTemplate
   ) where
 
 
@@ -171,6 +171,21 @@ compileTemplateTH ∷ String → String → Q Exp
 compileTemplateTH filename unprocessed =
   either (fail ∘ ("Parse error in mustache template: " ++) ∘ show) THS.lift $ compileTemplate filename (pack unprocessed)
 
+-- |
+-- Compile a mustache 'Template' at compile time. Usage:
+--
+-- > {-# LANGUAGE TemplateHaskell #-}
+-- > import Text.Mustache.Compile (embedTemplate)
+-- >
+-- > foo :: Template
+-- > foo = $(embedTemplate "dir/file.mustache")
+--
+-- Partials are not supported in compile time templates.
+
+embedTemplate :: FilePath → Q Exp
+embedTemplate filePath = do
+  stringFile ← THS.runIO $ readFile filePath
+  compileTemplateTH filePath stringFile
 
 -- ERRORS
 
