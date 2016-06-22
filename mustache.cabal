@@ -1,5 +1,5 @@
 name:                mustache
-version:             1.0
+version:             1.0.1
 synopsis:            A mustache template parser library.
 description:
   Allows parsing and rendering template files with mustache markup. See the
@@ -30,7 +30,7 @@ source-repository this
   type:     git
   branch:   master
   location: git://github.com/JustusAdam/mustache.git
-  tag:      v1.0
+  tag:      v1.0.1
 
 
 
@@ -81,6 +81,7 @@ executable haskell-mustache
                      , filepath
                      , base-unicode-symbols
   default-language:    Haskell2010
+  ghc-options:       -threaded -Wall
   hs-source-dirs:      app
 
 
