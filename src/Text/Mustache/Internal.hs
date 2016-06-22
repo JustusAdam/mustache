@@ -15,7 +15,6 @@ module Text.Mustache.Internal (uncons, escapeXMLText) where
 import           Data.Char       (ord)
 import qualified Data.IntMap     as IntMap
 import qualified Data.Text       as T
-import           Prelude.Unicode
 
 
 uncons :: [α] -> Maybe (α, [α])

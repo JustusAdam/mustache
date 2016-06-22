@@ -43,7 +43,6 @@ import           Data.Text
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
 import           Language.Haskell.TH.Lift (Lift (lift), deriveLift)
-import           Prelude.Unicode
 
 -- | Syntax tree for a mustache template
 type STree = ASTree Text
@@ -117,7 +116,7 @@ instance ToMustache Integer where
   toMustache = Number . fromInteger
 
 instance ToMustache Int where
-  toMustache = toMustache ∘ toInteger
+  toMustache = toMustache . toInteger
 
 instance ToMustache Char where
   toMustache = toMustache . (:[])
@@ -385,7 +384,7 @@ instance Lift TemplateCache where
   lift = const [|HM.empty|]
 
 instance Lift Text where
-  lift = lift ∘ unpack
+  lift = lift . unpack
 
 deriveLift ''DataIdentifier
 deriveLift ''Node
