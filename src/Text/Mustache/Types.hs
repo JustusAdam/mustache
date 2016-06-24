@@ -16,7 +16,7 @@ Portability : POSIX
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
-    ASTree(..)
+    ASTree
   , STree
   , Node(..)
   , DataIdentifier(..)
@@ -49,7 +49,7 @@ import           Prelude.Unicode
 type STree = ASTree Text
 
 
-type ASTree α = [Node α] 
+type ASTree α = [Node α]
 
 
 -- | Basic values composing the STree
