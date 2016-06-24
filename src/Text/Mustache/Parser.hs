@@ -22,7 +22,7 @@ module Text.Mustache.Parser
 
   -- * Configurations
 
-  , MustacheConf, defaultConf
+  , MustacheConf(..), defaultConf
 
   -- * Parser
 

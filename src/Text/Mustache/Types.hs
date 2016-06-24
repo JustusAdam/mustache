@@ -16,10 +16,12 @@ Portability : POSIX
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
-    STree
-  , Template(..)
+    ASTree(..)
+  , STree
   , Node(..)
   , DataIdentifier(..)
+  , Template(..)
+  , TemplateCache
   -- * Types for the Substitution / Data
   , Value(..)
   , Key
@@ -30,7 +32,6 @@ module Text.Mustache.Types
   -- ** Representation
   , Array, Object, Pair
   , Context(..)
-  , TemplateCache
   ) where
 
 
