@@ -16,7 +16,7 @@ Portability : POSIX
 module Text.Mustache.Types
   (
   -- * Types for the Parser / Template
-    ASTree(..)
+    ASTree
   , STree
   , Node(..)
   , DataIdentifier(..)
@@ -382,7 +382,7 @@ data Template = Template
   } deriving (Show)
 
 instance Lift TemplateCache where
-  lift = const [|HM.empty|]
+  lift m = [| HM.fromList $(lift $ HM.toList m) |]
 
 instance Lift Text where
   lift = lift . unpack

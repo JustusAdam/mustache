@@ -182,7 +182,9 @@ compileTemplateTH filename unprocessed =
 
 embedTemplate :: FilePath -> Q Exp
 embedTemplate filePath = do
-  stringFile <- THS.runIO $ readFile filePath
+  absoluteFilePath <- THS.runIO $ makeAbsolute filePath
+  THS.qAddDependentFile absoluteFilePath
+  stringFile <- THS.runIO $ readFile absoluteFilePath
   compileTemplateTH filePath stringFile
 
 -- ERRORS
