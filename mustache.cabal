@@ -112,9 +112,12 @@ test-suite language-specifications
                     , unordered-containers
                     , yaml
                     , filepath
-                    , process
-                    , temporary
                     , directory
                     , base-unicode-symbols
+                    , wreq
+                    , zlib
+                    , tar
+                    , lens
+                    , bytestring
   hs-source-dirs:     test/integration
   default-language:   Haskell2010

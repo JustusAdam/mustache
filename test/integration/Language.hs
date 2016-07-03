@@ -2,25 +2,31 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TupleSections     #-}
 {-# LANGUAGE UnicodeSyntax     #-}
 module Main where
 
-import           Control.Applicative  ((<$>), (<*>))
+import qualified Codec.Archive.Tar      as Tar
+import qualified Codec.Compression.GZip as GZip
+import           Control.Applicative    ((<$>), (<*>))
+import           Control.Category       ((>>>))
+import           Control.Lens
 import           Control.Monad
+import           Data.ByteString.Lazy   (toStrict)
 import           Data.Either
-import           Data.Foldable        (for_)
-import qualified Data.HashMap.Strict  as HM (HashMap, elems, empty, lookup,
-                                             traverseWithKey)
+import           Data.Foldable          (for_)
+import qualified Data.HashMap.Strict    as HM (HashMap, elems, empty, lookup,
+                                               traverseWithKey)
 import           Data.List
-import           Data.Monoid          (mempty, (<>))
-import qualified Data.Text            as T
-import           Data.Yaml            as Y (FromJSON, Value (..), decodeFile,
-                                            parseJSON, (.!=), (.:), (.:?))
-import           Debug.Trace          (traceShowId)
+import           Data.Maybe             (fromMaybe)
+import           Data.Monoid            (mempty, (<>))
+import qualified Data.Text              as T
+import           Data.Yaml              as Y (FromJSON, Value (..), decode,
+                                              parseJSON, (.!=), (.:), (.:?))
+import           Debug.Trace            (traceShowId)
+import           Network.Wreq
 import           System.Directory
 import           System.FilePath
-import           System.IO.Temp
-import           System.Process
 import           Test.Hspec
 import           Text.Mustache
 import           Text.Mustache.Parser
@@ -29,8 +35,8 @@ import           Text.Mustache.Types
 
 -- (langspecDir, specDir, releaseFile, releaseURL)
 langspecs =
-  [ ("andrewthad-spec-786e4ac", "specs", "langspec-pull.tar.gz", "https://codeload.github.com/andrewthad/spec/legacy.tar.gz/add_list_context_check")
-  , ("spec-1.1.3", "specs", "langspec-off.tar.gz", "https://codeload.github.com/mustache/spec/tar.gz/v1.1.3")
+  [ "https://codeload.github.com/andrewthad/spec/legacy.tar.gz/add_list_context_check"
+  , "https://codeload.github.com/mustache/spec/tar.gz/v1.1.3"
   ]
 
 
@@ -68,56 +74,44 @@ instance FromJSON LangSpecTest where
   parseJSON _ = mzero
 
 
-(&) :: a -> (a -> b) -> b
-(&) = flip ($)
+getOfficialSpecRelease :: String -> IO [(String, LangSpecFile)]
+getOfficialSpecRelease releaseURL  = do
+    res <- get releaseURL
+    let archive = Tar.read $ GZip.decompress (res ^. responseBody)
+    return $ Tar.foldEntries handleEntry [] (error . show) archive
+  where
+    handleEntry e acc =
+      case content of
+        Tar.NormalFile f _
+          | takeExtension filename `elem` [".yml", ".yaml"]
+              && not ("~" `isPrefixOf` takeFileName filename) ->
+                (filename, fromMaybe (error $ "Error parsing spec file " ++ filename) $ decode $ toStrict f):acc
+        _ -> acc
+      where
+        filename = Tar.entryPath e
+        content = Tar.entryContent e
 
 
-getOfficialSpecRelease :: FilePath -> FilePath -> FilePath -> FilePath -> IO ()
-getOfficialSpecRelease tempdir langspecDir releaseFile releaseURL  = do
-  currentDirectory <- getCurrentDirectory
-  setCurrentDirectory tempdir
-  createDirectory langspecDir
-  callProcess "curl" [releaseURL, "-o", releaseFile]
-  callProcess "tar" ["-xf", releaseFile]
-  setCurrentDirectory currentDirectory
-
-
-testOfficialLangSpec :: FilePath -> Spec
-testOfficialLangSpec dir = do
-  allFiles <- runIO $ getDirectoryContents dir
-  let testfiles = allFiles
-        & filter ((`elem` [".yml", ".yaml"]) . takeExtension)
-      -- Filters the lambda tests for now.
-        & filter (not . ("~" `isPrefixOf`) . takeFileName)
-  for_ testfiles $ \filename ->
-    runIO (decodeFile (dir </> filename)) >>= \case
-      Nothing -> describe ("File: " <> takeFileName filename) $
-        it "loads the data file" $
-          expectationFailure "Data file could not be parsed"
-      Just (LangSpecFile { tests }) ->
-        describe ("File: " <> takeFileName filename) $
-          for_ tests $ \(LangSpecTest { .. }) ->
-            it ("Name: " <> name <> "  Description: " <> specDescription) $
-              let
-                compiled = do
-                  partials' <- HM.traverseWithKey compileTemplate testPartials
-                  template' <- compileTemplate name template
-                  return $ template' { partials = partials' }
-              in
-                case compiled of
-                  Left m -> expectationFailure $ show m
-                  Right tmp ->
-                    substituteValue tmp (toMustache specData) `shouldBe` expected
+testOfficialLangSpec :: [(String, LangSpecFile)] -> Spec
+testOfficialLangSpec testfiles =
+  for_ testfiles $ \(filename, LangSpecFile { tests }) ->
+    describe ("File: " <> takeFileName filename) $
+      for_ tests $ \(LangSpecTest { .. }) ->
+        it ("Name: " <> name <> "  Description: " <> specDescription) $
+          let
+            compiled = do
+              partials' <- HM.traverseWithKey compileTemplate testPartials
+              template' <- compileTemplate name template
+              return $ template' { partials = partials' }
+          in
+            case compiled of
+              Left m -> expectationFailure $ show m
+              Right tmp ->
+                substituteValue tmp (toMustache specData) `shouldBe` expected
 
 
 main :: IO ()
 main =
-  void $
-    withSystemTempDirectory
-      "mustache-test-resources"
-      $ \tempdir -> do
-        for_ langspecs $ \(langspecDir, _, releaseFile, releaseURL) ->
-          getOfficialSpecRelease tempdir langspecDir releaseFile releaseURL
-        hspec $
-          for_ langspecs $ \(langspecDir, specDir, _, _) ->
-            testOfficialLangSpec (tempdir </> langspecDir </> specDir)
+  void $ do
+    specs <- mapM getOfficialSpecRelease langspecs
+    hspec $ mapM_ testOfficialLangSpec specs
