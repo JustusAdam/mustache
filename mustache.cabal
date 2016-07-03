@@ -112,7 +112,6 @@ test-suite language-specifications
                     , unordered-containers
                     , yaml
                     , filepath
-                    , directory
                     , base-unicode-symbols
                     , wreq
                     , zlib

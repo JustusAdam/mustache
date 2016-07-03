@@ -9,31 +9,24 @@ module Main where
 import qualified Codec.Archive.Tar      as Tar
 import qualified Codec.Compression.GZip as GZip
 import           Control.Applicative    ((<$>), (<*>))
-import           Control.Category       ((>>>))
 import           Control.Lens
 import           Control.Monad
 import           Data.ByteString.Lazy   (toStrict)
-import           Data.Either
 import           Data.Foldable          (for_)
-import qualified Data.HashMap.Strict    as HM (HashMap, elems, empty, lookup,
+import qualified Data.HashMap.Strict    as HM (HashMap, empty,
                                                traverseWithKey)
 import           Data.List
 import           Data.Maybe             (fromMaybe)
-import           Data.Monoid            (mempty, (<>))
 import qualified Data.Text              as T
 import           Data.Yaml              as Y (FromJSON, Value (..), decode,
                                               parseJSON, (.!=), (.:), (.:?))
-import           Debug.Trace            (traceShowId)
 import           Network.Wreq
-import           System.Directory
 import           System.FilePath
 import           Test.Hspec
 import           Text.Mustache
-import           Text.Mustache.Parser
-import           Text.Mustache.Types
 
 
--- (langspecDir, specDir, releaseFile, releaseURL)
+langspecs :: [String]
 langspecs =
   [ "https://codeload.github.com/andrewthad/spec/legacy.tar.gz/add_list_context_check"
   , "https://codeload.github.com/mustache/spec/tar.gz/v1.1.3"
@@ -95,9 +88,9 @@ getOfficialSpecRelease releaseURL  = do
 testOfficialLangSpec :: [(String, LangSpecFile)] -> Spec
 testOfficialLangSpec testfiles =
   for_ testfiles $ \(filename, LangSpecFile { tests }) ->
-    describe ("File: " <> takeFileName filename) $
+    describe ("File: " ++ takeFileName filename) $
       for_ tests $ \(LangSpecTest { .. }) ->
-        it ("Name: " <> name <> "  Description: " <> specDescription) $
+        it ("Name: " ++ name ++ "  Description: " ++ specDescription) $
           let
             compiled = do
               partials' <- HM.traverseWithKey compileTemplate testPartials
