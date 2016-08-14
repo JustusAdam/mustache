@@ -1,5 +1,13 @@
 # Mustache library changelog
 
+## v2.0
+
+- Added QuasiQuotes and template Haskell functions for compile time template embedding.
+
+## v1.0
+
+- Stabilised API's
+
 ## v0.5.1.0rc-7
 
 - Removed dependency tagsoup
