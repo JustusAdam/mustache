@@ -1,5 +1,5 @@
 name:                mustache
-version:             2.0
+version:             2.0.1
 synopsis:            A mustache template parser library.
 description:
   Allows parsing and rendering template files with mustache markup. See the
@@ -17,7 +17,10 @@ bug-reports:         https://github.com/JustusAdam/mustache/issues
 copyright:           (c) 2015, 2016 Justus Adam
 category:            Development
 build-type:          Simple
-extra-source-files:  README.md CHANGELOG.md
+extra-source-files:  README.md
+                   , CHANGELOG.md
+                   , test/unit/examples/*.txt.mustache
+                   , test/unit/examples/partials/*.txt.mustache
 cabal-version:       >=1.10
 tested-with:         GHC >=7.8 && <= 7.10.2
 
