@@ -12,6 +12,7 @@ import           Data.Either
 import           Data.Function         (on)
 import           Data.Monoid
 import qualified Data.Text             as T
+import           System.IO.Unsafe      (unsafePerformIO)
 import           Test.Hspec
 import           Text.Mustache
 import           Text.Mustache.Compile
@@ -208,8 +209,16 @@ compileTimeSpec =
         compileTemplate "Template Name" "This {{ template }} was injected at compile time with a quasiquoter"
 
     it "creates compiled templates from an embedded file" $
-      Right $(embedTemplate "test/unit/examples/test-template.txt.mustache") `shouldBe`
+      Right $(embedTemplate ["test/unit/examples"] "test-template.txt.mustache") `shouldBe`
         compileTemplate "Template Name" "This {{ template }} was injected at compile time with an embedded file\n"
+
+    it "creates compiled templates from a single embedded file" $
+      Right $(embedSingleTemplate "test/unit/examples/test-template.txt.mustache") `shouldBe`
+        compileTemplate "Template Name" "This {{ template }} was injected at compile time with an embedded file\n"
+
+    it "creates compiled templates from an embedded file containing partials" $
+      Right $(embedTemplate ["test/unit/examples", "test/unit/examples/partials"] "test-template-partials.txt.mustache") `shouldBe`
+        unsafePerformIO (automaticCompile ["test/unit/examples", "test/unit/examples/partials"] "test-template-partials.txt.mustache")
 
 main :: IO ()
 main = hspec $ do
