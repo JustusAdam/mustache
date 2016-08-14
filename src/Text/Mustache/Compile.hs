@@ -12,7 +12,7 @@ Portability : POSIX
 {-# LANGUAGE TemplateHaskell #-}
 module Text.Mustache.Compile
   ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
-  , compileTemplate, cacheFromList, getPartials, getFile, mustache, embedTemplate
+  , compileTemplate, cacheFromList, getPartials, getFile, mustache, embedTemplate, embedSingleTemplate
   ) where
 
 
@@ -155,19 +155,32 @@ getFile (templateDir : xs) fp =
 -- > foo :: Template
 -- > foo = [mustache|This is my inline {{ template }} created at compile time|]
 --
--- Partials are not supported in compile time templates.
+-- Partials are not supported in the QuasiQuoter
 
 mustache :: QuasiQuoter
 mustache = QuasiQuoter {quoteExp = \unprocessedTemplate -> do
   l <- location
   compileTemplateTH (fileAndLine l) unprocessedTemplate }
 
-fileAndLine :: Loc -> String
-fileAndLine loc = loc_filename loc ++ ":" ++ (show . fst . loc_start $ loc)
+-- |
+-- Compile a mustache 'Template' at compile time providing a search space for any partials. Usage:
+--
+-- > {-# LANGUAGE TemplateHaskell #-}
+-- > import Text.Mustache.Compile (embedTemplate)
+-- >
+-- > foo :: Template
+-- > foo = $(embedTemplate ["dir", "dir/partials"] "file.mustache")
+--
 
-compileTemplateTH :: String -> String -> Q Exp
-compileTemplateTH filename unprocessed =
-  either (fail . ("Parse error in mustache template: " ++) . show) THS.lift $ compileTemplate filename (pack unprocessed)
+embedTemplate :: [FilePath] -> FilePath -> Q Exp
+embedTemplate searchSpace filename = do
+  template <- either (fail . ("Parse error in mustache template: " ++) . show) pure =<< THS.runIO (automaticCompile searchSpace filename)
+  let possiblePaths = do
+        fname <- (filename:) . HM.keys . partials $ template
+        path <- searchSpace
+        pure $ path </> fname
+  mapM_ addDependentRelativeFile =<< THS.runIO (filterM doesFileExist possiblePaths)
+  THS.lift template
 
 -- |
 -- Compile a mustache 'Template' at compile time. Usage:
@@ -178,14 +191,22 @@ compileTemplateTH filename unprocessed =
 -- > foo :: Template
 -- > foo = $(embedTemplate "dir/file.mustache")
 --
--- Partials are not supported in compile time templates.
+-- Partials are not supported in embedSingleTemplate
 
-embedTemplate :: FilePath -> Q Exp
-embedTemplate filePath = do
-  absoluteFilePath <- THS.runIO $ makeAbsolute filePath
-  THS.qAddDependentFile absoluteFilePath
-  stringFile <- THS.runIO $ readFile absoluteFilePath
-  compileTemplateTH filePath stringFile
+embedSingleTemplate :: FilePath -> Q Exp
+embedSingleTemplate filePath = do
+  addDependentRelativeFile filePath
+  compileTemplateTH filePath =<< THS.runIO (readFile filePath)
+
+fileAndLine :: Loc -> String
+fileAndLine loc = loc_filename loc ++ ":" ++ (show . fst . loc_start $ loc)
+
+compileTemplateTH :: String -> String -> Q Exp
+compileTemplateTH filename unprocessed =
+  either (fail . ("Parse error in mustache template: " ++) . show) THS.lift $ compileTemplate filename (pack unprocessed)
+
+addDependentRelativeFile :: FilePath -> Q ()
+addDependentRelativeFile = THS.qAddDependentFile <=< THS.runIO . makeAbsolute
 
 -- ERRORS
 
