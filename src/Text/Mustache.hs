@@ -165,11 +165,11 @@ module Text.Mustache
 
   -- ** Generic
 
-  , substitute
+  , substitute, checkedSubstitute
 
   -- ** Specialized
 
-  , substituteValue
+  , substituteValue, checkedSubstituteValue
 
   -- ** Data Conversion
   , ToMustache, toMustache, object, (~>), (~=)
