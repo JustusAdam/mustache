@@ -13,7 +13,7 @@ module Text.Mustache.Render
   -- * Substitution
     substitute, substituteValue
   -- * Checked substitution
-  , checkedSubstituteValue, SubstitutionError(..)
+  , checkedSubstitute, checkedSubstituteValue, SubstitutionError(..)
   -- * Working with Context
   , Context(..), search, innerSearch
   -- * Util
@@ -41,6 +41,7 @@ import           Text.Mustache.Internal
 import           Text.Mustache.Types
 
 
+-- | Type of errors we may encounter during substitution.
 data SubstitutionError
   = VariableNotFound [Key] -- ^ The template contained a variable for which there was no data counterpart in the current context
   | InvalidImplicitSectionContextType String -- ^ When substituting an implicit section the current context had an unsubstitutable type
@@ -74,13 +75,44 @@ substitute t = substituteValue t . toMustache
 
 {-|
   Substitutes all mustache defined tokens (or tags) for values found in the
+  provided data structure and report any errors and warnings encountered during
+  substitution.
+
+  This function always produces results, as in a fully substituted/rendered template,
+  it never halts on errors. It simply reports them in the first part of the tuple.
+  Sites with errors are usually substituted with empty string.
+
+  The second value in the tuple is a template rendered with errors ignored.
+  Therefore if you must enforce that there were no errors during substitution
+  you must check that the error list in the first tuple value is empty.
+
+  Equivalent to @checkedSubstituteValue . toMustache@.
+-}
+checkedSubstitute :: ToMustache k => Template -> k -> ([SubstitutionError], Text)
+checkedSubstitute t = checkedSubstituteValue t . toMustache
+
+
+{-|
+  Substitutes all mustache defined tokens (or tags) for values found in the
   provided data structure.
 -}
 substituteValue :: Template -> Value -> Text
 substituteValue = (snd .) . checkedSubstituteValue
 
 
+{-|
+  Substitutes all mustache defined tokens (or tags) for values found in the
+  provided data structure and report any errors and warnings encountered during
+  substitution.
 
+  This function always produces results, as in a fully substituted/rendered template,
+  it never halts on errors. It simply reports them in the first part of the tuple.
+  Sites with errors are usually substituted with empty string.
+
+  The second value in the tuple is a template rendered with errors ignored.
+  Therefore if you must enforce that there were no errors during substitution
+  you must check that the error list in the first tuple value is empty.
+-}
 checkedSubstituteValue :: Template -> Value -> ([SubstitutionError], Text)
 checkedSubstituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
   second T.concat $ execWriter $ mapM (substitute' (Context mempty dataStruct)) cAst

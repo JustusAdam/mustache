@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+# v2.1
+
+- Added API preserving checked substitution with 'checkedSubstitute' and 'checkedSubstituteValue'
+
 ## v2.0
 
 - Added QuasiQuotes and template Haskell functions for compile time template embedding.
