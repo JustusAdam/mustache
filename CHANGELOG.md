@@ -3,6 +3,7 @@
 # v2.1
 
 - Added API preserving checked substitution with 'checkedSubstitute' and 'checkedSubstituteValue'
+- Better and more ToMustache instances. No longer are all sequences of characters serialised as strings
 
 ## v2.0
 

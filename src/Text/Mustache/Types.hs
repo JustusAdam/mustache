@@ -36,10 +36,13 @@ module Text.Mustache.Types
 
 
 import qualified Data.Aeson               as Aeson
-import           Data.HashMap.Strict      as HM
+import           Data.Foldable            (toList)
+import qualified Data.HashMap.Strict      as HM
 import qualified Data.HashSet             as HS
 import qualified Data.Map                 as Map
 import           Data.Scientific
+import qualified Data.Sequence            as Seq
+import qualified Data.Set                 as Set
 import           Data.Text
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
@@ -101,11 +104,16 @@ instance Show Value where
   show (Bool   b) = show b
   show Null       = "null"
 
+
+listToMustache' :: ToMustache ω => [ω] -> Value
+listToMustache' = Array . V.fromList . fmap toMustache
+
+
 -- | Conversion class
 class ToMustache ω where
   toMustache :: ω -> Value
   listToMustache :: [ω] -> Value
-  listToMustache = Array . V.fromList . fmap toMustache
+  listToMustache = listToMustache'
 
 instance ToMustache Float where
   toMustache = Number . fromFloatDigits
@@ -132,6 +140,10 @@ instance ToMustache Bool where
 instance ToMustache () where
   toMustache = const Null
 
+instance ToMustache ω => ToMustache (Maybe ω) where
+  toMustache (Just w) = toMustache w
+  toMustache Nothing = Null
+
 instance ToMustache Text where
   toMustache = String
 
@@ -144,8 +156,11 @@ instance ToMustache Scientific where
 instance ToMustache α => ToMustache [α] where
   toMustache = listToMustache
 
+instance ToMustache ω => ToMustache (Seq.Seq ω) where
+  toMustache = listToMustache' . toList
+
 instance ToMustache ω => ToMustache (V.Vector ω) where
-  toMustache = toMustache . fmap toMustache
+  toMustache = Array . fmap toMustache
 
 instance (ToMustache ω) => ToMustache (Map.Map Text ω) where
   toMustache = mapInstanceHelper id
@@ -164,7 +179,7 @@ mapInstanceHelper conv =
     HM.empty
 
 instance ToMustache ω => ToMustache (HM.HashMap Text ω) where
-  toMustache = toMustache . fmap toMustache
+  toMustache = Object . fmap toMustache
 
 instance ToMustache ω => ToMustache (HM.HashMap LT.Text ω) where
   toMustache = hashMapInstanceHelper LT.toStrict
@@ -215,7 +230,10 @@ instance ToMustache Aeson.Value where
   toMustache Aeson.Null       = Null
 
 instance ToMustache ω => ToMustache (HS.HashSet ω) where
-  toMustache = toMustache . HS.toList
+  toMustache = listToMustache' . HS.toList
+
+instance ToMustache ω => ToMustache (Set.Set ω) where
+  toMustache = listToMustache' . Set.toList
 
 instance (ToMustache α, ToMustache β) => ToMustache (α, β) where
   toMustache (a, b) = toMustache [toMustache a, toMustache b]
