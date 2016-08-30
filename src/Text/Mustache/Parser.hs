@@ -19,10 +19,6 @@ module Text.Mustache.Parser
 
     parse, parseWithConf
 
-  -- * Configurations
-
-  , MustacheConf(..), defaultConf
-
   -- * Parser
 
   , Parser, MustacheState
@@ -44,11 +40,6 @@ import           Prelude             as Prel
 import           Text.Mustache.Types
 import           Text.Parsec         as P hiding (endOfLine, parse)
 
-
--- | Initial configuration for the parser
-data MustacheConf = MustacheConf
-  { delimiters :: (String, String)
-  }
 
 
 -- | User state for the parser
@@ -113,12 +104,12 @@ emptyState = MustacheState ("", "") mempty True Nothing
 
 
 -- | Default configuration (delimiters = ("{{", "}}"))
-defaultConf :: MustacheConf
-defaultConf = MustacheConf ("{{", "}}")
+defaultConf :: CompileConfig
+defaultConf = CompileConfig ("{{", "}}")
 
 
-initState :: MustacheConf -> MustacheState
-initState (MustacheConf { delimiters }) = emptyState { sDelimiters = delimiters }
+initState :: CompileConfig -> MustacheState
+initState (CompileConfig { delimiters }) = emptyState { sDelimiters = delimiters }
 
 
 setIsBeginning :: Bool -> Parser ()
@@ -144,11 +135,11 @@ endOfLine = do
   Runs the parser for a mustache template, returning the syntax tree.
 -}
 parse :: FilePath -> Text -> Either ParseError STree
-parse = parseWithConf defaultConf
+parse = parseWithConf defaultConf []
 
 
 -- | Parse using a custom initial configuration
-parseWithConf :: MustacheConf -> FilePath -> Text -> Either ParseError STree
+parseWithConf :: CompileConfig -> FilePath -> Text -> Either ParseError STree
 parseWithConf = P.runParser parseText . initState
 
 

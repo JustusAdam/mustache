@@ -38,6 +38,68 @@ import           Text.Parsec.Error
 import           Text.Parsec.Pos
 import           Text.Printf
 
+
+--------------------------------------------------------------------------------
+-- Simple compiles
+--------------------------------------------------------------------------------
+
+-- | Compiles a 'Template'.
+compileTemplate :: String -> Text -> Either ParseError Template
+compileTemplate name' =
+  getFile searchSpace name' >>= Template name' . parse name'
+
+
+--------------------------------------------------------------------------------
+-- Complex compiles
+--------------------------------------------------------------------------------
+
+{-|
+  Compile a mustache template providing a list of precompiled templates that do
+  not have to be recompiled.
+-}
+compileTemplateWithCache :: [FilePath]
+                         -> TemplateCache
+                         -> FilePath
+                         -> IO (Either ParseError (Template, TemplateCache))
+compileTemplateWithCache searchSpace templates initName =
+  runEitherT $ runStateT (compile' initName) $ flattenPartials templates
+
+
+--------------------------------------------------------------------------------
+-- Compile monad
+--------------------------------------------------------------------------------
+
+
+type Compile a = StateT (HM.HashMap String Template) (EitherT ParseError IO) a
+
+
+runCompile :: TemplateCache -> Compile a -> IO (Either ParseError (a, TemplateCache))
+runCompile templates c = runEitherT $ runStateT c templates
+
+
+compileM :: FilePath -> Compile Template
+compileM name' = do
+  templates' <- get
+  case HM.lookup name' templates' of
+    Just template -> return template
+    Nothing -> do
+      rawSource <- lift $ getFile searchSpace name'
+      compiled@(Template { ast = mSTree }) <-
+        lift $ hoistEither $ compileTemplate name' rawSource
+
+      mapM_
+        (\partialName -> do
+          nt <- compile' partialName
+          modify (HM.insert partialName nt)
+        )
+        (getPartials mSTree)
+      return compiled
+
+
+compileManyM :: [FilePath] -> Compile [Template]
+compileManyM = mapM compileM
+
+
 {-|
   Compiles a mustache template provided by name including the mentioned partials.
 
@@ -58,50 +120,12 @@ localAutomaticCompile :: FilePath -> IO (Either ParseError Template)
 localAutomaticCompile = automaticCompile ["."]
 
 
-{-|
-  Compile a mustache template providing a list of precompiled templates that do
-  not have to be recompiled.
--}
-compileTemplateWithCache :: [FilePath]
-                         -> TemplateCache
-                         -> FilePath
-                         -> IO (Either ParseError Template)
-compileTemplateWithCache searchSpace templates initName =
-  runEitherT $ evalStateT (compile' initName) $ flattenPartials templates
-  where
-    compile' :: FilePath
-             -> StateT
-                (HM.HashMap String Template)
-                (EitherT ParseError IO)
-                Template
-    compile' name' = do
-      templates' <- get
-      case HM.lookup name' templates' of
-        Just template -> return template
-        Nothing -> do
-          rawSource <- lift $ getFile searchSpace name'
-          compiled@(Template { ast = mSTree }) <-
-            lift $ hoistEither $ compileTemplate name' rawSource
 
-          foldM
-            (\st@(Template { partials = p }) partialName -> do
-              nt <- compile' partialName
-              modify (HM.insert partialName nt)
-              return (st { partials = HM.insert partialName nt p })
-            )
-            compiled
-            (getPartials mSTree)
 
 
 -- | Flatten a list of Templates into a single 'TemplateChache'
 cacheFromList :: [Template] -> TemplateCache
 cacheFromList = flattenPartials . fromList . fmap (name &&& id)
-
-
--- | Compiles a 'Template' directly from 'Text' without checking for missing partials.
--- the result will be a 'Template' with an empty 'partials' cache.
-compileTemplate :: String -> Text -> Either ParseError Template
-compileTemplate name' = fmap (flip (Template name') mempty) . parse name'
 
 
 {-|

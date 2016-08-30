@@ -20,7 +20,12 @@ module Text.Mustache.Types
   , STree
   , Node(..)
   , DataIdentifier(..)
-  , Template(..)
+  , Template
+  , ast, name
+  , Templates
+  , partials, renderConfig, compileConfig
+  , CompileConfig, delimiters, searchSpace
+  , RenderConfig, getPartial
   , TemplateCache
   -- * Types for the Substitution / Data
   , Value(..)
@@ -44,6 +49,7 @@ import           Data.Text
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
 import           Language.Haskell.TH.Lift (Lift (lift), deriveLift)
+import Control.Lens
 
 -- | Syntax tree for a mustache template
 type STree = ASTree Text
@@ -376,13 +382,9 @@ type Key = Text
   A compiled Template with metadata.
 -}
 data Template = Template
-  { name     :: String
-  , ast      :: STree
-  , partials :: TemplateCache
+  { _name     :: String
+  , _ast      :: STree
   } deriving (Show)
-
-instance Lift TemplateCache where
-  lift m = [| HM.fromList $(lift $ HM.toList m) |]
 
 instance Lift Text where
   lift = lift . unpack
@@ -390,3 +392,26 @@ instance Lift Text where
 deriveLift ''DataIdentifier
 deriveLift ''Node
 deriveLift ''Template
+
+
+data Templates m = Templates
+    { _templates :: HM.HashMap String Template
+    , _compileConfig :: CompileConfig
+    , _renderConfig :: RenderConfig m
+    }
+
+makeLenses ''Template
+makeLenses ''Templates
+
+data CompileConfig = CompileConfig
+    { _delimiters :: (String, String)
+    , _searchSpace :: [FilePath]
+    }
+
+
+data RenderConfig m :: RenderConfig
+    { _getPartial :: Templates -> String -> m Template
+    }
+
+makeLenses ''CompileConfig
+makeLenses ''RenderConfig
