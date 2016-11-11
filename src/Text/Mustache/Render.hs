@@ -183,7 +183,7 @@ substituteASTWithValAndCache cAst cPartials ctx =
         Nothing -> tellError $ PartialNotFound pName
         Just t ->
           let ast' = handleIndent indent $ ast t
-          in substituteASTWithValAndCache ast' (partials t) context
+          in substituteASTWithValAndCache ast' (partials t `HM.union` cPartials) context
 
 
 showValueType :: Value -> String

@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v2.1.2
+
+- Fixed template cahce again, as the spec requires access to the previous cache in partials as well
+
 ## v2.1.1
 
 - Fixed an error where the substitution of partials would not use the template cache of the new partial
