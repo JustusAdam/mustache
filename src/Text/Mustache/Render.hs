@@ -114,8 +114,12 @@ substituteValue = (snd .) . checkedSubstituteValue
   you must check that the error list in the first tuple value is empty.
 -}
 checkedSubstituteValue :: Template -> Value -> ([SubstitutionError], Text)
-checkedSubstituteValue (Template { ast = cAst, partials = cPartials }) dataStruct =
-  second T.concat $ execWriter $ mapM (substitute' (Context mempty dataStruct)) cAst
+checkedSubstituteValue template dataStruct =
+  second T.concat $ execWriter $ substituteASTWithValAndCache (ast template) (partials template) (Context mempty dataStruct)
+
+substituteASTWithValAndCache :: STree -> TemplateCache -> Context Value -> Substitution ()
+substituteASTWithValAndCache cAst cPartials ctx =
+  mapM_ (substitute' ctx) cAst
   where
     -- Main substitution function
     substitute' :: Context Value -> Node Text -> Substitution ()
@@ -175,10 +179,11 @@ checkedSubstituteValue (Template { ast = cAst, partials = cPartials }) dataStruc
 
     -- substituting a partial
     substitute' context (Partial indent pName) =
-      maybe
-        (tellError $ PartialNotFound pName)
-        (mapM_ (substitute' context) . handleIndent indent . ast)
-        $ HM.lookup pName cPartials
+      case HM.lookup pName cPartials of
+        Nothing -> tellError $ PartialNotFound pName
+        Just t ->
+          let ast' = handleIndent indent $ ast t
+          in substituteASTWithValAndCache ast' (partials t) context
 
 
 showValueType :: Value -> String
