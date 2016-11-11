@@ -1,6 +1,10 @@
 # Mustache library changelog
 
-# v2.1
+## v2.1.1
+
+- Fixed an error where the substitution of partials would not use the template cache of the new partial
+
+## v2.1
 
 - Added API preserving checked substitution with 'checkedSubstitute' and 'checkedSubstituteValue'
 - Better and more ToMustache instances. No longer are all sequences of characters serialised as strings
