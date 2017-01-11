@@ -37,6 +37,10 @@ Please refer to the [documentation][] on hackage.
 
 Current implementation substitutes the `TEMPLATE` once with each `DATA-FILE`
 
+#### Example
+
+    $ haskell-mustache my-template-file data-file-1.json data-file-2.json data-file-3.json
+
 ## Roadmap
 
 - [x] String parser for mustache templates
