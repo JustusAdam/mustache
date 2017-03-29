@@ -34,6 +34,7 @@ escapeXML = concatMap $ \x -> IntMap.findWithDefault [x] (ord x) mp
 xmlEntities :: [(String, String)]
 xmlEntities =
   [ ("quot", "\"")
+  , ("#39", "'")
   , ("amp" , "&")
   , ("lt"  , "<")
   , ("gt"  , ">")
