@@ -116,14 +116,14 @@ substituteSpec =
     it "substitutes a html escaped value for a variable" $
       substitute
         (toTemplate [Variable escaped (NamedData ["name"])])
-        (object ["name" ~> ("<tag>" :: T.Text)])
-      `shouldBe` "&lt;tag&gt;"
+        (object ["name" ~> ("\" ' < > &" :: T.Text)])
+      `shouldBe` "&quot; &#39; &lt; &gt; &amp;"
 
     it "substitutes raw value for an unescaped variable" $
       substitute
         (toTemplate [Variable unescaped (NamedData ["name"])])
-        (object ["name" ~> ("<tag>" :: T.Text)])
-      `shouldBe` "<tag>"
+        (object ["name" ~> ("\" ' < > &" :: T.Text)])
+      `shouldBe` "\" ' < > &"
 
     it "substitutes a section when the key is present (and an empty object)" $
       substitute
