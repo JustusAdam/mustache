@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v2.1.3
+
+- Added excaping for the apostrophe "'" as per xml spec, courtesy to @tfausak
+
 ## v2.1.2
 
 - Fixed template cahce again, as the spec requires access to the previous cache in partials as well
