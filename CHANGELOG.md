@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v2.1.4
+
+- Treat Null as falsy in sections
+
 ## v2.1.3
 
 - Added excaping for the apostrophe "'" as per xml spec, courtesy to @tfausak

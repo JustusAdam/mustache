@@ -150,6 +150,7 @@ substituteASTWithValAndCache cAst cPartials ctx =
               in
                 mapM_ (substitute' newContext) secSTree
         Just (Bool False) -> return ()
+        Just Null -> return ()
         Just (Lambda l)   -> mapM_ (substitute' context) (l context secSTree)
         Just focus'       ->
           let

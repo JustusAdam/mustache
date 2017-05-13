@@ -173,6 +173,12 @@ substituteSpec =
         (object ["section" ~> False])
       `shouldBe` ""
 
+    it "does not substitute a section when the key is present (and null)" $
+      substitute
+        (toTemplate [Section (NamedData ["section"]) [TextBlock "t"]])
+        (object ["section" ~> Null])
+      `shouldBe` ""
+
     it "does not substitute a section when the key is present (and empty list)" $
       substitute
         (toTemplate [Section (NamedData ["section"]) [TextBlock "t"]])
