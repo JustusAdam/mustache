@@ -7,7 +7,11 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
+{-# OPTIONS_GHC -fno-warn-orphans  #-}
 module Text.Mustache.Render
   (
   -- * Substitution
@@ -15,52 +19,32 @@ module Text.Mustache.Render
   -- * Checked substitution
   , checkedSubstitute, checkedSubstituteValue, SubstitutionError(..)
   -- * Working with Context
-  , Context(..), search, innerSearch
+  , Context(..), search, innerSearch, SubM, substituteNode, substituteAST
   -- * Util
   , toString
   ) where
 
 
-import           Control.Applicative    ((<|>))
-import           Control.Arrow          (first, second)
+import           Control.Arrow                (first, second)
 import           Control.Monad
 
-import           Data.Foldable          (for_)
-import           Data.HashMap.Strict    as HM hiding (keys, map)
-import           Data.Maybe             (fromMaybe)
+import           Data.Foldable                (for_)
+import           Data.HashMap.Strict          as HM hiding (keys, map)
+import           Data.Maybe                   (fromMaybe)
 
-import           Data.Scientific        (floatingOrInteger)
-import           Data.Text              as T (Text, isSuffixOf, pack, replace,
-                                              stripSuffix)
-import qualified Data.Vector            as V
-import           Prelude                hiding (length, lines, unlines)
+import           Data.Scientific              (floatingOrInteger)
+import           Data.Text                    as T (Text, isSuffixOf, pack,
+                                                    replace, stripSuffix)
+import qualified Data.Vector                  as V
+import           Prelude                      hiding (length, lines, unlines)
 
+import           Control.Monad.Reader
 import           Control.Monad.Writer
-import qualified Data.Text              as T
+import qualified Data.Text                    as T
+import qualified Data.Text.Lazy               as LT
 import           Text.Mustache.Internal
+import           Text.Mustache.Internal.Types
 import           Text.Mustache.Types
-
-
--- | Type of errors we may encounter during substitution.
-data SubstitutionError
-  = VariableNotFound [Key] -- ^ The template contained a variable for which there was no data counterpart in the current context
-  | InvalidImplicitSectionContextType String -- ^ When substituting an implicit section the current context had an unsubstitutable type
-  | InvertedImplicitSection -- ^ Inverted implicit sections should never occur
-  | SectionTargetNotFound [Key] -- ^ The template contained a section for which there was no data counterpart in the current context
-  | PartialNotFound FilePath -- ^ The template contained a partial for which there was no data counterpart in the current context
-  | DirectlyRenderedValue Value -- ^ A complex value such as an Object or Array was directly rendered into the template (warning)
-  deriving (Show)
-
-
-type Substitution = Writer ([SubstitutionError], [Text])
-
-
-tellError :: SubstitutionError -> Substitution ()
-tellError e = tell ([e], [])
-
-
-tellSuccess :: Text -> Substitution ()
-tellSuccess s = tell ([], [s])
 
 
 {-|
@@ -115,86 +99,88 @@ substituteValue = (snd .) . checkedSubstituteValue
 -}
 checkedSubstituteValue :: Template -> Value -> ([SubstitutionError], Text)
 checkedSubstituteValue template dataStruct =
-  second T.concat $ execWriter $ substituteASTWithValAndCache (ast template) (partials template) (Context mempty dataStruct)
+  second T.concat $ runSubM (substituteAST (ast template)) (Context mempty dataStruct) (partials template)
 
-substituteASTWithValAndCache :: STree -> TemplateCache -> Context Value -> Substitution ()
-substituteASTWithValAndCache cAst cPartials ctx =
-  mapM_ (substitute' ctx) cAst
-  where
-    -- Main substitution function
-    substitute' :: Context Value -> Node Text -> Substitution ()
+-- | Substitute an entire 'STree' rather than just a single 'Node'
+substituteAST :: STree -> SubM ()
+substituteAST = mapM_ substituteNode
 
-    -- subtituting text
-    substitute' _ (TextBlock t) = tellSuccess t
 
-    -- substituting a whole section (entails a focus shift)
-    substitute' (Context parents focus@(Array a)) (Section Implicit secSTree)
-      | V.null a  = return ()
-      | otherwise = for_ a $ \focus' ->
+-- | Main substitution function
+substituteNode :: Node Text -> SubM ()
+
+-- subtituting text
+substituteNode (TextBlock t) = tellSuccess t
+
+-- substituting a whole section (entails a focus shift)
+substituteNode (Section Implicit secSTree) =
+  asks fst >>= \case
+    Context parents focus@(Array a)
+      | V.null a  -> return ()
+      | otherwise -> for_ a $ \focus' ->
         let
           newContext = Context (focus:parents) focus'
         in
-          mapM_ (substitute' newContext) secSTree
-    substitute' context@(Context _ (Object _)) (Section Implicit secSTree) =
-      mapM_ (substitute' context) secSTree
-    substitute' (Context _ v) (Section Implicit _) =
-      tellError $ InvalidImplicitSectionContextType $ showValueType v
-    substitute' context@(Context parents focus) (Section (NamedData secName) secSTree) =
-      case search context secName of
-        Just arr@(Array arrCont) ->
-          if V.null arrCont
-            then return ()
-            else for_ arrCont $ \focus' ->
-              let
-                newContext = Context (arr:focus:parents) focus'
-              in
-                mapM_ (substitute' newContext) secSTree
-        Just (Bool False) -> return ()
-        Just Null -> return ()
-        Just (Lambda l)   -> mapM_ (substitute' context) (l context secSTree)
-        Just focus'       ->
-          let
-            newContext = Context (focus:parents) focus'
-          in
-            mapM_ (substitute' newContext) secSTree
-        Nothing -> tellError $ SectionTargetNotFound secName
+          shiftContext newContext $ substituteAST secSTree
+    Context _ (Object _) -> substituteAST secSTree
+    Context _ v -> tellError $ InvalidImplicitSectionContextType $ showValueType v
 
-    -- substituting an inverted section
-    substitute' _       (InvertedSection  Implicit           _        ) = tellError InvertedImplicitSection
-    substitute' context (InvertedSection (NamedData secName) invSecSTree) =
-      case search context secName of
-        Just (Bool False)         -> contents
-        Just (Array a) | V.null a -> contents
-        Nothing                   -> contents
-        _                         -> return ()
-      where
-        contents = mapM_ (substitute' context) invSecSTree
+substituteNode (Section (NamedData secName) secSTree) =
+  search secName >>= \case
+    Just arr@(Array arrCont) ->
+      if V.null arrCont
+        then return ()
+        else do
+          Context parents focus <- asks fst
+          for_ arrCont $ \focus' ->
+            let newContext = Context (arr:focus:parents) focus'
+            in shiftContext newContext $ substituteAST secSTree
+    Just (Bool False) -> return ()
+    Just Null         -> return ()
+    Just (Lambda l)   -> substituteAST =<< l secSTree
+    Just focus'       -> do
+      Context parents focus <- asks fst
+      let newContext = Context (focus:parents) focus'
+      shiftContext newContext $ substituteAST secSTree
+    Nothing -> tellError $ SectionTargetNotFound secName
 
-    -- substituting a variable
-    substitute' (Context _ current) (Variable _ Implicit) = toString current >>= tellSuccess
-    substitute' context (Variable escaped (NamedData varName)) =
-      maybe
-        (tellError $ VariableNotFound varName)
-        (toString >=> tellSuccess . (if escaped then escapeXMLText else id))
-        $ search context varName
+-- substituting an inverted section
+substituteNode (InvertedSection  Implicit _) = tellError InvertedImplicitSection
+substituteNode (InvertedSection (NamedData secName) invSecSTree) =
+  search secName >>= \case
+    Just (Bool False) -> contents
+    Just (Array a)    | V.null a -> contents
+    Nothing           -> contents
+    _                 -> return ()
+  where
+    contents = mapM_ substituteNode invSecSTree
 
-    -- substituting a partial
-    substitute' context (Partial indent pName) =
-      case HM.lookup pName cPartials of
-        Nothing -> tellError $ PartialNotFound pName
-        Just t ->
-          let ast' = handleIndent indent $ ast t
-          in substituteASTWithValAndCache ast' (partials t `HM.union` cPartials) context
+-- substituting a variable
+substituteNode (Variable _ Implicit) = asks (ctxtFocus . fst) >>= toString >>= tellSuccess
+substituteNode (Variable escaped (NamedData varName)) =
+  maybe
+    (tellError $ VariableNotFound varName)
+    (toString >=> tellSuccess . (if escaped then escapeXMLText else id))
+    =<< search varName
+
+-- substituting a partial
+substituteNode (Partial indent pName) = do
+  cPartials <- asks snd
+  case HM.lookup pName cPartials of
+    Nothing -> tellError $ PartialNotFound pName
+    Just t ->
+      let ast' = handleIndent indent $ ast t
+      in local (second (partials t `HM.union`)) $ substituteAST ast'
 
 
 showValueType :: Value -> String
-showValueType Null = "Null"
+showValueType Null       = "Null"
 showValueType (Object _) = "Object"
-showValueType (Array _) = "Array"
+showValueType (Array _)  = "Array"
 showValueType (String _) = "String"
 showValueType (Lambda _) = "Lambda"
 showValueType (Number _) = "Number"
-showValueType (Bool _) = "Bool"
+showValueType (Bool _)   = "Bool"
 
 
 handleIndent :: Maybe Text -> STree -> STree
@@ -204,36 +190,14 @@ handleIndent (Just indentation) ast' = preface <> content
     preface = if T.null indentation then [] else [TextBlock indentation]
     content = if T.null indentation
       then ast'
-      else
-        let
-          fullIndented = fmap (indentBy indentation) ast'
-          dropper (TextBlock t) = TextBlock $
-            if ("\n" <> indentation) `isSuffixOf` t
-              then fromMaybe t $ stripSuffix indentation t
-              else t
-          dropper a = a
-        in
-          reverse $ fromMaybe [] (uncurry (:) . first dropper <$> uncons (reverse fullIndented))
-
-
--- | Search for a key in the current context.
---
--- The search is conducted inside out mening the current focus
--- is searched first. If the key is not found the outer scopes are recursively
--- searched until the key is found, then 'innerSearch' is called on the result.
-search :: Context Value -> [Key] -> Maybe Value
-search _ [] = Nothing
-search ctx keys@(_:nextKeys) = go ctx keys >>= innerSearch nextKeys
-  where
-    go _ [] = Nothing
-    go (Context parents focus) val@(x:_) = searchCurrentContext <|> searchParentContext
+      else reverse $ fromMaybe [] (uncurry (:) . first dropper <$> uncons (reverse fullIndented))
       where
-        searchCurrentContext = case focus of
-                                  (Object o) -> HM.lookup x o
-                                  _          -> Nothing
-        searchParentContext = do
-          (newFocus, newParents) <- uncons parents
-          go (Context newParents newFocus) val
+        fullIndented = fmap (indentBy indentation) ast'
+        dropper (TextBlock t) = TextBlock $
+          if ("\n" <> indentation) `isSuffixOf` t
+            then fromMaybe t $ stripSuffix indentation t
+            else t
+        dropper a = a
 
 indentBy :: Text -> Node Text -> Node Text
 indentBy indent p@(Partial (Just indent') name')
@@ -244,18 +208,37 @@ indentBy indent (TextBlock t) = TextBlock $ replace "\n" ("\n" <> indent) t
 indentBy _ a = a
 
 
--- | Searches nested scopes navigating inward. Fails if it encunters something
--- other than an object before the key is expended.
-innerSearch :: [Key] -> Value -> Maybe Value
-innerSearch []     v          = Just v
-innerSearch (y:ys) (Object o) = HM.lookup y o >>= innerSearch ys
-innerSearch _      _          = Nothing
-
 
 -- | Converts values to Text as required by the mustache standard
-toString :: Value -> Substitution Text
+toString :: Value -> SubM Text
 toString (String t) = return t
 toString (Number n) = return $ either (pack . show) (pack . show) (floatingOrInteger n :: Either Double Integer)
 toString e          = do
   tellError $ DirectlyRenderedValue e
   return $ pack $ show e
+
+
+class ToText a where
+  toText :: a -> Text
+
+instance ToText Text where
+  toText = id
+
+instance ToText LT.Text where
+  toText = LT.toStrict
+
+instance ToText String where
+  toText = pack
+
+
+instance ToMustache (Context Value -> STree -> STree) where
+  toMustache f = Lambda $ (<$> askContext) . flip f
+
+instance ToText t => ToMustache (Context Value -> STree -> t) where
+  toMustache f = Lambda $ (<$> askContext) . wrapper
+    where
+      wrapper ::  STree -> Context Value -> STree
+      wrapper lSTree c = [TextBlock $ toText $ f c lSTree]
+
+instance ToText t => ToMustache (STree -> SubM t) where
+  toMustache f = Lambda (fmap (return . TextBlock . toText) . f)
