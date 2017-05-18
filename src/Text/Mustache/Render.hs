@@ -216,27 +216,23 @@ toString e          = do
   return $ pack $ show e
 
 
-class ToText a where
-  toText :: a -> Text
-
-instance ToText Text where
-  toText = id
-
-instance ToText LT.Text where
-  toText = LT.toStrict
-
-instance ToText String where
-  toText = pack
-
-
 instance ToMustache (Context Value -> STree -> STree) where
   toMustache f = Lambda $ (<$> askContext) . flip f
 
-instance ToText t => ToMustache (Context Value -> STree -> t) where
-  toMustache f = Lambda $ (<$> askContext) . wrapper
-    where
-      wrapper ::  STree -> Context Value -> STree
-      wrapper lSTree c = [TextBlock $ toText $ f c lSTree]
+instance ToMustache (Context Value -> STree -> Text) where
+  toMustache = lambdaHelper id
 
-instance ToText t => ToMustache (STree -> SubM t) where
-  toMustache f = Lambda (fmap (return . TextBlock . toText) . f)
+instance ToMustache (Context Value -> STree -> LT.Text) where
+  toMustache = lambdaHelper LT.toStrict
+
+instance ToMustache (Context Value -> STree -> String) where
+  toMustache = lambdaHelper pack
+
+lambdaHelper :: (r -> Text) -> (Context Value -> STree -> r) -> Value
+lambdaHelper conv f = Lambda $ (<$> askContext) . wrapper
+  where
+    wrapper ::  STree -> Context Value -> STree
+    wrapper lSTree c = [TextBlock $ conv $ f c lSTree]
+
+instance ToMustache (STree -> SubM Text) where
+  toMustache f = Lambda (fmap (return . TextBlock) . f)
