@@ -58,20 +58,19 @@ shiftContext = local . first . const
 -- searched until the key is found, then 'innerSearch' is called on the result.
 search :: [Key] -> SubM (Maybe Value)
 search [] = return Nothing
-search keys@(_:nextKeys) = (>>= innerSearch nextKeys) <$> go keys
+search (key:nextKeys) = (>>= innerSearch nextKeys) <$> go
   where
-    go [] = return Nothing
-    go val@(x:_) = do
-        (Context parents focus) <- asks fst
-
+    go = asks fst >>= \case
+      Context parents focus -> do
+        let searchParents = case parents of
+                  (newFocus: newParents) -> shiftContext (Context newParents newFocus) $ go
+                  _ -> return Nothing
         case focus of
-            Object o ->
-              case HM.lookup x o of
-                Just res -> return $ Just res
-                _ -> case parents of
-                        (newFocus: newParents) -> shiftContext (Context newParents newFocus) $ go val
-                        _ -> return Nothing
-            _ -> return Nothing
+          Object o ->
+            case HM.lookup key o of
+              Just res -> return $ Just res
+              _ -> searchParents
+          _ -> searchParents
 
 
 -- | Searches nested scopes navigating inward. Fails if it encunters something

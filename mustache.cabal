@@ -29,13 +29,6 @@ source-repository head
   type:     git
   location: git://github.com/JustusAdam/mustache.git
 
-source-repository this
-  type:     git
-  branch:   master
-  location: git://github.com/JustusAdam/mustache.git
-  tag:      v2.1.4
-
-
 
 library
   exposed-modules:     Text.Mustache

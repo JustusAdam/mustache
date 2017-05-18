@@ -118,10 +118,8 @@ substituteNode (Section Implicit secSTree) =
     Context parents focus@(Array a)
       | V.null a  -> return ()
       | otherwise -> for_ a $ \focus' ->
-        let
-          newContext = Context (focus:parents) focus'
-        in
-          shiftContext newContext $ substituteAST secSTree
+        let newContext = Context (focus:parents) focus'
+        in shiftContext newContext $ substituteAST secSTree
     Context _ (Object _) -> substituteAST secSTree
     Context _ v -> tellError $ InvalidImplicitSectionContextType $ showValueType v
 

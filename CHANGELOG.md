@@ -1,5 +1,14 @@
 # Mustache library changelog
 
+## v2.2.1
+
+- Quickfix for an issue with resolving in context
+
+## v2.2
+
+- changed substitution into a new monad
+    + easier usage in lambdas and lambdas can now do nested substitution
+
 ## v2.1.4
 
 - Treat Null as falsy in sections
@@ -10,7 +19,7 @@
 
 ## v2.1.2
 
-- Fixed template cahce again, as the spec requires access to the previous cache in partials as well
+- Fixed template cache again, as the spec requires access to the previous cache in partials as well
 
 ## v2.1.1
 
