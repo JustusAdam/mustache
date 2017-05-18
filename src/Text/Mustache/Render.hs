@@ -101,6 +101,7 @@ checkedSubstituteValue :: Template -> Value -> ([SubstitutionError], Text)
 checkedSubstituteValue template dataStruct =
   second T.concat $ runSubM (substituteAST (ast template)) (Context mempty dataStruct) (partials template)
 
+-- | Catch the results of running the inner substitution.
 catchSubstitute :: SubM a -> SubM (a, Text)
 catchSubstitute = fmap (second (T.concat . snd)) . SubM . listen . runSubM'
 
