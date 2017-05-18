@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v2.2.2
+
+- Added a function to catch a substitution result
+
 ## v2.2.1
 
 - Quickfix for an issue with resolving in context

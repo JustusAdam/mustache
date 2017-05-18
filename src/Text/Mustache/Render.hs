@@ -19,7 +19,7 @@ module Text.Mustache.Render
   -- * Checked substitution
   , checkedSubstitute, checkedSubstituteValue, SubstitutionError(..)
   -- * Working with Context
-  , Context(..), search, innerSearch, SubM, substituteNode, substituteAST
+  , Context(..), search, innerSearch, SubM, substituteNode, substituteAST, catchSubstitute
   -- * Util
   , toString
   ) where
@@ -100,6 +100,9 @@ substituteValue = (snd .) . checkedSubstituteValue
 checkedSubstituteValue :: Template -> Value -> ([SubstitutionError], Text)
 checkedSubstituteValue template dataStruct =
   second T.concat $ runSubM (substituteAST (ast template)) (Context mempty dataStruct) (partials template)
+
+catchSubstitute :: SubM a -> SubM (a, Text)
+catchSubstitute = fmap (second (T.concat . snd)) . SubM . listen . runSubM'
 
 -- | Substitute an entire 'STree' rather than just a single 'Node'
 substituteAST :: STree -> SubM ()

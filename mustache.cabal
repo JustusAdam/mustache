@@ -1,5 +1,5 @@
 name:                mustache
-version:             2.2.1
+version:             2.2.2
 synopsis:            A mustache template parser library.
 description:
   Allows parsing and rendering template files with mustache markup. See the
