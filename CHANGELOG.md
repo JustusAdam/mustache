@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v2.2.3
+
+- Quick fix to prevent catchSubstitute from reporting substitutions to the renderer.
+
 ## v2.2.2
 
 - Added a function to catch a substitution result

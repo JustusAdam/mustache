@@ -185,6 +185,22 @@ substituteSpec =
         (object ["section" ~> ([] :: [T.Text])])
       `shouldBe` ""
 
+    it "substitutes a lambda by applying lambda to contained text" $
+      substitute
+        (toTemplate [Section (NamedData ["lambda"]) [TextBlock "t"]])
+        (object ["lambda" ~> (overText T.toUpper)])
+      `shouldBe` "T"
+
+
+    it "substitutes a lambda by applying lambda to the nested substitution results" $
+      substitute
+        (toTemplate [Section (NamedData ["lambda"]) [TextBlock "t", Variable escaped (NamedData ["inner"])]])
+        (object [ "lambda" ~> (overText T.toUpper)
+                , "inner" ~> ("var" :: T.Text)
+                ])
+      `shouldBe` "TVAR"
+
+
     it "substitutes a nested section" $
       substitute
         (toTemplate [Variable escaped (NamedData ["outer", "inner"])])

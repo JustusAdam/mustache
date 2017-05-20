@@ -103,7 +103,9 @@ checkedSubstituteValue template dataStruct =
 
 -- | Catch the results of running the inner substitution.
 catchSubstitute :: SubM a -> SubM (a, Text)
-catchSubstitute = fmap (second (T.concat . snd)) . SubM . listen . runSubM'
+catchSubstitute = fmap (second (T.concat . snd)) . SubM . hideResults . listen . runSubM'
+  where
+    hideResults = censor (\(errs, _) -> (errs, []))
 
 -- | Substitute an entire 'STree' rather than just a single 'Node'
 substituteAST :: STree -> SubM ()
