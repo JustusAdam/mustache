@@ -171,8 +171,17 @@ module Text.Mustache
 
   , substituteValue, checkedSubstituteValue
 
-  -- ** Data Conversion
+  -- ** In Lambdas
+
+  , substituteNode, substituteAST, catchSubstitute
+
+  -- * Data Conversion
   , ToMustache, toMustache, object, (~>), (~=)
+
+  -- ** Utilities for lambdas
+
+  , overText
+
   ) where
 
 
@@ -180,3 +189,9 @@ module Text.Mustache
 import           Text.Mustache.Compile
 import           Text.Mustache.Render
 import           Text.Mustache.Types
+import qualified Data.Text as T
+
+
+-- | Creates a 'Lambda' which first renders the contained section and then applies the supplied function
+overText :: (T.Text -> T.Text) -> Value
+overText f = toMustache $ fmap (f . snd) . catchSubstitute . substituteAST
