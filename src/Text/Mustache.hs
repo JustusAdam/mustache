@@ -131,7 +131,7 @@ pass ('compileTemplate'), resulting in a 'Template' with an empty 'partials' sec
 
 Subsequenty the 'STree' of the template is scanned for included partials, any
 present 'TemplateCache' is queried for the partial ('compileTemplateWithCache'),
-if not found it will be searched for in the @searchSpache@, compiled and
+if not found it will be searched for in the @searchSpace@, compiled and
 inserted into the template's own cache as well as the global cache for the
 compilation process.
 
