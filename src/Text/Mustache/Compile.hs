@@ -20,7 +20,6 @@ import           Control.Arrow              ((&&&))
 import           Control.Monad
 import           Control.Monad.Except
 import           Control.Monad.State
-import           Control.Monad.Trans.Either
 import           Data.Bool
 import           Data.HashMap.Strict        as HM
 import           Data.Text                  hiding (concat, find, map, uncons)
@@ -67,12 +66,12 @@ compileTemplateWithCache :: [FilePath]
                          -> FilePath
                          -> IO (Either ParseError Template)
 compileTemplateWithCache searchSpace templates initName =
-  runEitherT $ evalStateT (compile' initName) $ flattenPartials templates
+  runExceptT $ evalStateT (compile' initName) $ flattenPartials templates
   where
     compile' :: FilePath
              -> StateT
                 (HM.HashMap String Template)
-                (EitherT ParseError IO)
+                (ExceptT ParseError IO)
                 Template
     compile' name' = do
       templates' <- get
@@ -81,7 +80,7 @@ compileTemplateWithCache searchSpace templates initName =
         Nothing -> do
           rawSource <- lift $ getFile searchSpace name'
           compiled@(Template { ast = mSTree }) <-
-            lift $ hoistEither $ compileTemplate name' rawSource
+            lift $ ExceptT . pure $ compileTemplate name' rawSource
 
           foldM
             (\st@(Template { partials = p }) partialName -> do
@@ -135,7 +134,7 @@ flattenPartials m = foldrWithKey (insertWith (\_ b -> b)) m m
   This trows 'ParseError's to be compatible with the internal Either Monad of
   'compileTemplateWithCache'.
 -}
-getFile :: [FilePath] -> FilePath -> EitherT ParseError IO Text
+getFile :: [FilePath] -> FilePath -> ExceptT ParseError IO Text
 getFile [] fp = throwError $ fileNotFound fp
 getFile (templateDir : xs) fp =
   lift (doesFileExist filePath) >>=
