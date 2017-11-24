@@ -1,5 +1,10 @@
 # Mustache library changelog
 
+## v2.3.0
+
+- Changed `EitherT` to `ExceptT` (deprecation)
+- removed `getFile` from public API
+
 ## v2.2.3
 
 - Quick fix to prevent catchSubstitute from reporting substitutions to the renderer.

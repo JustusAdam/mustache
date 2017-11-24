@@ -16,3 +16,4 @@ cabal.sandbox.config
 *.hp
 .DS_Store
 .stack-work/
+mustache.cabal

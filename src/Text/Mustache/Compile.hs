@@ -12,7 +12,7 @@ Portability : POSIX
 {-# LANGUAGE TemplateHaskell #-}
 module Text.Mustache.Compile
   ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
-  , compileTemplate, cacheFromList, getPartials, getFile, mustache, embedTemplate, embedSingleTemplate
+  , compileTemplate, cacheFromList, getPartials, mustache, embedTemplate, embedSingleTemplate
   ) where
 
 

@@ -1,0 +1,101 @@
+name: mustache
+version: '2.3.0'
+synopsis: A mustache template parser library.
+description: ! 'Allows parsing and rendering template files with mustache markup.
+  See the
+
+  mustache <http://mustache.github.io/mustache.5.html language reference>.
+
+
+  Implements the mustache spec version 1.1.3.
+
+
+  /Note/: Versions including and beyond 0.4 are compatible with ghc 7.8 again.'
+category: Development
+author: Justus Adam
+maintainer: dev@justus.science
+copyright:
+- (c) 2015
+- 2016 Justus Adam
+license: BSD3
+homepage: https://github.com/JustusAdam/mustache
+git: git://github.com/JustusAdam/mustache.git
+bug-reports: https://github.com/JustusAdam/mustache/issues
+tested-with: GHC>=7.8 && <=7.10.2
+extra-source-files:
+- README.md
+- CHANGELOG.md
+- test/unit/examples/*.txt.mustache
+- test/unit/examples/partials/*.txt.mustache
+dependencies:
+- base >=4.7 && <5
+- text
+- aeson
+- bytestring
+- filepath
+library:
+  source-dirs: src
+  default-extensions:
+  - LambdaCase
+  - TupleSections
+  other-extensions:
+  - NamedFieldPuns
+  - OverloadedStrings
+  - LambdaCase
+  - TupleSections
+  - TemplateHaskell
+  - QuasiQuotes
+  ghc-options: -Wall
+  exposed-modules:
+  - Text.Mustache
+  - Text.Mustache.Types
+  - Text.Mustache.Parser
+  - Text.Mustache.Compile
+  - Text.Mustache.Render
+  dependencies:
+  - parsec
+  - mtl >=2.2.1
+  - either
+  - unordered-containers
+  - vector
+  - directory
+  - scientific
+  - containers
+  - template-haskell
+  - th-lift
+executables:
+  haskell-mustache:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+    - -threaded
+    - -Wall
+    dependencies:
+    - mustache
+    - yaml
+    - cmdargs
+tests:
+  unit-tests:
+    main: Spec.hs
+    source-dirs: test/unit
+    dependencies:
+    - hspec
+    - mustache
+    - unordered-containers
+    - yaml
+    - process
+    - temporary
+    - directory
+  language-specifications:
+    main: Language.hs
+    source-dirs: test/integration
+    dependencies:
+    - hspec
+    - mustache
+    - unordered-containers
+    - yaml
+    - base-unicode-symbols
+    - wreq
+    - zlib
+    - tar
+    - lens
