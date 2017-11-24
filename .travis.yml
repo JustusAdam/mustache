@@ -17,6 +17,7 @@ env:
 - ARGS="--resolver lts-3"
 - ARGS="--resolver lts"
 - ARGS="--resolver lts-4"
+- ARGS="--resolver lts-9.14"
 - ARGS="--resolver nightly"
 matrix:
   allow_failures:
