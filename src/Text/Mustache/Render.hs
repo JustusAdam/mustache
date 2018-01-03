@@ -217,6 +217,9 @@ indentBy _ a = a
 toString :: Value -> SubM Text
 toString (String t) = return t
 toString (Number n) = return $ either (pack . show) (pack . show) (floatingOrInteger n :: Either Double Integer)
+toString (Lambda l) = do
+  ((), res) <- catchSubstitute $ substituteAST =<< l []
+  return res
 toString e          = do
   tellError $ DirectlyRenderedValue e
   return $ pack $ show e
