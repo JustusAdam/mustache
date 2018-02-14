@@ -92,7 +92,7 @@ compileTemplateWithCache searchSpace templates initName =
             (getPartials mSTree)
 
 
--- | Flatten a list of Templates into a single 'TemplateChache'
+-- | Flatten a list of Templates into a single 'TemplateCache'
 cacheFromList :: [Template] -> TemplateCache
 cacheFromList = flattenPartials . fromList . fmap (name &&& id)
 
