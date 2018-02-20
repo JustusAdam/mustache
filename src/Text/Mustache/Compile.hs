@@ -92,7 +92,7 @@ compileTemplateWithCache searchSpace templates initName =
             (getPartials mSTree)
 
 
--- | Flatten a list of Templates into a single 'TemplateChache'
+-- | Flatten a list of Templates into a single 'TemplateCache'
 cacheFromList :: [Template] -> TemplateCache
 cacheFromList = flattenPartials . fromList . fmap (name &&& id)
 
@@ -185,10 +185,10 @@ embedTemplate searchSpace filename = do
 -- Compile a mustache 'Template' at compile time. Usage:
 --
 -- > {-# LANGUAGE TemplateHaskell #-}
--- > import Text.Mustache.Compile (embedTemplate)
+-- > import Text.Mustache.Compile (embedSingleTemplate)
 -- >
 -- > foo :: Template
--- > foo = $(embedTemplate "dir/file.mustache")
+-- > foo = $(embedSingleTemplate "dir/file.mustache")
 --
 -- Partials are not supported in embedSingleTemplate
 
