@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
@@ -347,8 +348,11 @@ data Template = Template
 instance Lift TemplateCache where
   lift m = [| HM.fromList $(lift $ HM.toList m) |]
 
+--Data.Text 1.2.4.0 introduces its own Lift Text instance
+#if !MIN_VERSION_text(1,2,4)
 instance Lift Text where
   lift = lift . unpack
+#endif
 
 deriveLift ''DataIdentifier
 deriveLift ''Node
