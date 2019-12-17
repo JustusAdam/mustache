@@ -17,3 +17,4 @@ cabal.sandbox.config
 .DS_Store
 .stack-work/
 mustache.cabal
+/stack.yaml.lock
