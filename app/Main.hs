@@ -8,7 +8,7 @@ import qualified Data.ByteString                 as B (readFile)
 import qualified Data.ByteString.Lazy            as BS (readFile)
 import           Data.Foldable                   (for_)
 import qualified Data.Text.IO                    as TIO (putStrLn)
-import           Data.Yaml                       (decodeEither)
+import           Data.Yaml                       (decodeEither')
 
 import           System.Console.CmdArgs.Implicit (Data, Typeable, argPos, args,
                                                   cmdArgs, def, help, summary,
@@ -44,7 +44,11 @@ readJSON = fmap eitherDecode . BS.readFile
 
 
 readYAML :: FilePath -> IO (Either String Value)
-readYAML = fmap decodeEither . B.readFile
+readYAML filepath = do
+  result <- fmap decodeEither' $ B.readFile filepath
+  case result of
+    Left err  -> pure $ Left (show err)
+    Right val -> pure $ Right val
 
 
 main :: IO ()
