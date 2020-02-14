@@ -4,6 +4,7 @@ module Main (main) where
 
 
 import           Data.Aeson                      (Value, eitherDecode)
+import           Data.Bifunctor                  (first)
 import qualified Data.ByteString                 as B (readFile)
 import qualified Data.ByteString.Lazy            as BS (readFile)
 import           Data.Foldable                   (for_)
@@ -44,11 +45,7 @@ readJSON = fmap eitherDecode . BS.readFile
 
 
 readYAML :: FilePath -> IO (Either String Value)
-readYAML filepath = do
-  result <- fmap decodeEither' $ B.readFile filepath
-  case result of
-    Left err  -> pure $ Left (show err)
-    Right val -> pure $ Right val
+readYAML = fmap (first show . decodeEither') . B.readFile
 
 
 main :: IO ()
