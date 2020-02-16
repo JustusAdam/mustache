@@ -4,11 +4,12 @@ module Main (main) where
 
 
 import           Data.Aeson                      (Value, eitherDecode)
+import           Data.Bifunctor                  (first)
 import qualified Data.ByteString                 as B (readFile)
 import qualified Data.ByteString.Lazy            as BS (readFile)
 import           Data.Foldable                   (for_)
 import qualified Data.Text.IO                    as TIO (putStrLn)
-import           Data.Yaml                       (decodeEither)
+import           Data.Yaml                       (decodeEither')
 
 import           System.Console.CmdArgs.Implicit (Data, Typeable, argPos, args,
                                                   cmdArgs, def, help, summary,
@@ -44,7 +45,7 @@ readJSON = fmap eitherDecode . BS.readFile
 
 
 readYAML :: FilePath -> IO (Either String Value)
-readYAML = fmap decodeEither . B.readFile
+readYAML = fmap (first show . decodeEither') . B.readFile
 
 
 main :: IO ()
