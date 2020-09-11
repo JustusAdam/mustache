@@ -12,6 +12,7 @@ module Text.Mustache.Internal.Types where
 import           Control.Arrow
 import           Control.Monad.RWS        hiding (lift)
 import qualified Data.Aeson               as Aeson
+import           Data.Int                 (Int8, Int16, Int32, Int64)
 import           Data.Foldable            (toList)
 import qualified Data.HashMap.Strict      as HM
 import qualified Data.HashSet             as HS
@@ -22,7 +23,9 @@ import qualified Data.Set                 as Set
 import           Data.Text
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
+import           Data.Word                (Word8, Word16, Word32, Word64)
 import           Language.Haskell.TH.Lift (Lift (lift), deriveLift)
+import           Numeric.Natural          (Natural)
 
 
 -- | Type of errors we may encounter during substitution.
@@ -143,6 +146,8 @@ instance Show Value where
 listToMustache' :: ToMustache ω => [ω] -> Value
 listToMustache' = Array . V.fromList . fmap toMustache
 
+integralToMustache :: Integral ω => ω -> Value
+integralToMustache = toMustache . toInteger
 
 -- | Conversion class
 class ToMustache ω where
@@ -159,8 +164,38 @@ instance ToMustache Double where
 instance ToMustache Integer where
   toMustache = Number . fromInteger
 
+instance ToMustache Natural where
+  toMustache = integralToMustache
+
 instance ToMustache Int where
-  toMustache = toMustache . toInteger
+  toMustache = integralToMustache
+
+instance ToMustache Word where
+  toMustache = integralToMustache
+
+instance ToMustache Int8 where
+  toMustache = integralToMustache
+
+instance ToMustache Int16 where
+  toMustache = integralToMustache
+
+instance ToMustache Int32 where
+  toMustache = integralToMustache
+
+instance ToMustache Int64 where
+  toMustache = integralToMustache
+
+instance ToMustache Word8 where
+  toMustache = integralToMustache
+
+instance ToMustache Word16 where
+  toMustache = integralToMustache
+
+instance ToMustache Word32 where
+  toMustache = integralToMustache
+
+instance ToMustache Word64 where
+  toMustache = integralToMustache
 
 instance ToMustache Char where
   toMustache = toMustache . (:[])

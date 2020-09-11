@@ -22,7 +22,7 @@ module Text.Mustache.Types
   -- ** Converting
   , object
   , (~>), (↝), (~=), (⥱)
-  , ToMustache, toMustache, mFromJSON
+  , ToMustache, toMustache, mFromJSON, integralToMustache
   -- ** Representation
   , Array, Object, Pair
   , SubM, askContext, askPartials
