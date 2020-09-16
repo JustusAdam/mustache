@@ -176,7 +176,7 @@ module Text.Mustache
   , substituteNode, substituteAST, catchSubstitute
 
   -- * Data Conversion
-  , ToMustache, toMustache, object, (~>), (~=)
+  , ToMustache, toMustache, integralToMustache, object, (~>), (~=)
 
   -- ** Utilities for lambdas
 
