@@ -16,7 +16,7 @@ import           Data.ByteString.Lazy ( toStrict )
 import           Data.Foldable ( for_ )
 import qualified Data.HashMap.Strict as HM
 import           Data.List ( isPrefixOf )
-import           Data.Maybe ( fromMaybe )
+import           Data.Maybe ( fromMaybe, mapMaybe )
 import qualified Data.Text as T
 import           Data.Yaml
                    ( FromJSON, Value (..), (.!=), (.:), (.:?), decodeEither'
@@ -75,23 +75,31 @@ getOfficialSpecRelease :: String -> IO [(String, LangSpecFile)]
 getOfficialSpecRelease releaseURL  = do
     res <- get releaseURL
     let archive = Tar.read $ GZip.decompress (res ^. responseBody)
-    pure $ Tar.foldEntries handleEntry [] (error . show) archive
+    either (error . show) (pure . fromEntries) $ entriesToList archive
   where
-    handleEntry e acc =
+    entriesToList :: Tar.Entries e -> Either e [Tar.Entry]
+    entriesToList Tar.Done = Right []
+    entriesToList (Tar.Fail e) = Left e
+    entriesToList (Tar.Next entry rest) = (entry:) <$> entriesToList rest
+
+    fromEntries = mapMaybe fromEntry
+
+    fromEntry e =
       case content of
         Tar.NormalFile f _
           | takeExtension filename `elem` [".yml", ".yaml"]
               && not ("~" `isPrefixOf` takeFileName filename) ->
-                ( filename
-                , case decodeEither' $ toStrict f of
-                    Left e -> error $
-                         "Error parsing spec file "
-                      ++ filename
-                      ++ ": "
-                      ++ displayException e
-                    Right spec -> spec
-                ) : acc
-        _ -> acc
+                Just
+                  ( filename
+                  , case decodeEither' $ toStrict f of
+                      Left e -> error $
+                           "Error parsing spec file "
+                        ++ filename
+                        ++ ": "
+                        ++ displayException e
+                      Right spec -> spec
+                  )
+        _ -> Nothing
       where
         filename = Tar.entryPath e
         content = Tar.entryContent e
