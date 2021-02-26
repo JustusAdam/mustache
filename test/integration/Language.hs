@@ -82,27 +82,30 @@ getOfficialSpecRelease releaseURL  = do
     entriesToList (Tar.Fail e) = Left e
     entriesToList (Tar.Next entry rest) = (entry:) <$> entriesToList rest
 
-    fromEntries = mapMaybe fromEntry
+    fromEntries =
+      map decodeSpec
+      . filter (not . isOptionalSpec)
+      . filter isYamlFile
+      . mapMaybe fromNormalFile
 
-    fromEntry e =
-      case content of
-        Tar.NormalFile f _
-          | takeExtension filename `elem` [".yml", ".yaml"]
-              && not ("~" `isPrefixOf` takeFileName filename) ->
-                Just
-                  ( filename
-                  , case decodeEither' $ toStrict f of
-                      Left e -> error $
-                           "Error parsing spec file "
-                        ++ filename
-                        ++ ": "
-                        ++ displayException e
-                      Right spec -> spec
-                  )
+    fromNormalFile e =
+      case Tar.entryContent e of
+        Tar.NormalFile f _ -> Just (Tar.entryPath e, f)
         _ -> Nothing
-      where
-        filename = Tar.entryPath e
-        content = Tar.entryContent e
+
+    isYamlFile (filename, _) = takeExtension filename `elem` [".yml", ".yaml"]
+
+    isOptionalSpec (filename, _) = "~" `isPrefixOf` takeFileName filename
+
+    decodeSpec (filename, f) =
+      let spec = case decodeEither' $ toStrict f of
+            Left e -> error $
+                 "Error parsing spec file "
+              ++ filename
+              ++ ": "
+              ++ displayException e
+            Right spec -> spec
+      in (filename, spec)
 
 
 testOfficialLangSpec :: [(String, LangSpecFile)] -> Spec
