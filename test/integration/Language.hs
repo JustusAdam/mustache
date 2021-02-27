@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE UnicodeSyntax     #-}
 module Main
   ( main
@@ -19,9 +20,8 @@ import           Data.List ( isPrefixOf )
 import           Data.Maybe ( fromMaybe, mapMaybe )
 import qualified Data.Text as T
 import           Data.Yaml
-                   ( FromJSON, Value (..), (.!=), (.:), (.:?), decodeEither'
-                   , parseJSON
-                   )
+                   ( FromJSON, (.!=), (.:), (.:?), decodeEither', parseJSON )
+import qualified Data.Yaml as Y
 import           Network.Wreq ( get, responseBody )
 import           System.FilePath ( takeExtension, takeFileName )
 import           Test.Hspec
@@ -29,6 +29,8 @@ import           Test.Hspec
 import           Text.Mustache
                    ( Template (..), compileTemplate, substituteValue, toMustache
                    )
+import           Text.Mustache.Types ( Value )
+
 
 langspecs :: [String]
 langspecs =
@@ -54,17 +56,17 @@ data LangSpecTest = LangSpecTest
 
 
 instance FromJSON LangSpecFile where
-  parseJSON (Object o) = LangSpecFile
+  parseJSON (Y.Object o) = LangSpecFile
     <$> o .: "overview"
     <*> o .: "tests"
   parseJSON _ = mzero
 
 
 instance FromJSON LangSpecTest where
-  parseJSON (Object o) = LangSpecTest
+  parseJSON (Y.Object o) = LangSpecTest
     <$> o .: "name"
     <*> o .: "desc"
-    <*> o .: "data"
+    <*> fmap (toMustache @Y.Value) (o .: "data")
     <*> o .: "template"
     <*> o .: "expected"
     <*> o .:? "partials" .!= HM.empty
@@ -123,7 +125,7 @@ testOfficialLangSpec testfiles =
             case compiled of
               Left m -> expectationFailure $ show m
               Right tmp ->
-                substituteValue tmp (toMustache specData) `shouldBe` expected
+                substituteValue tmp specData `shouldBe` expected
 
 
 main :: IO ()
