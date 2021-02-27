@@ -198,7 +198,8 @@ import           Text.Mustache.Types
                    )
 
 
+{-# DEPRECATED overText "Use toMustache instead" #-}
 -- | Creates a 'Lambda' which first renders the contained section and then
 -- applies the supplied function
 overText :: (T.Text -> T.Text) -> Value
-overText f = toMustache $ fmap (f . snd) . catchSubstitute . substituteAST
+overText = toMustache
