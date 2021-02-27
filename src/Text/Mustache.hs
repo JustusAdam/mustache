@@ -94,6 +94,22 @@ not an instance of 'ToMustache' but an instance of 'ToJSON' you can use the
       ]
 @
 
+To define a mustache lambda, provide a `Text -> Text` function. This function
+takes in the rendered text and returns text that should be displayed instead.
+This doesn't completely implement the mustache spec for functions, but it should
+suffice for most use cases.
+
+For more advanced use cases, look at any 'ToMustache' instances for other
+function types.
+
+@
+  -- outputs: "Hello Alice"
+  substitute [mustache|{{#greeting}}{{name}}{{/greeting}}|] $ object
+    [ "name" ~> "Alice"
+    , "greeting" ~> \\t -> "Hello " <> t <> "!"
+    ]
+@
+
 All operators are also provided in a unicode form, for those that, like me, enjoy
 unicode operators.
 
