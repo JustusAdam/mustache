@@ -245,3 +245,8 @@ lambdaHelper conv f = Lambda $ (<$> askContext) . wrapper
 
 instance ToMustache (STree -> SubM Text) where
   toMustache f = Lambda (fmap (return . TextBlock) . f)
+
+instance ToMustache (Text -> Text) where
+  toMustache f = Lambda $ \tree -> do
+    (_, res) <- catchSubstitute $ substituteAST tree
+    return [TextBlock $ f res]
