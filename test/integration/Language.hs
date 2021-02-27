@@ -27,7 +27,9 @@ import qualified Data.Yaml as Y
 import           Network.Wreq ( get, responseBody )
 import           System.FilePath ( takeExtension, takeFileName )
 import           Test.Hspec
-                   ( Spec, describe, expectationFailure, hspec, shouldBe, it )
+                   ( Spec, describe, expectationFailure, hspec, pendingWith
+                   , shouldBe, it
+                   )
 import           Text.Mustache
                    ( Template (..), ToMustache (..), (~>), catchSubstitute
                    , compileTemplate, object, substituteAST, substituteValue
@@ -42,10 +44,12 @@ langspecs =
   , "https://codeload.github.com/mustache/spec/tar.gz/v1.1.3"
   ]
 
+data MaybeRunSpec a = RunSpec a | SkipSpec a
+
 
 data LangSpecFile = LangSpecFile
   { overview :: String
-  , tests    :: [LangSpecTest]
+  , tests    :: [MaybeRunSpec LangSpecTest]
   }
 
 
@@ -62,7 +66,7 @@ data LangSpecTest = LangSpecTest
 instance FromJSON LangSpecFile where
   parseJSON (Y.Object o) = LangSpecFile
     <$> o .: "overview"
-    <*> o .: "tests"
+    <*> (map RunSpec <$> o .: "tests")
   parseJSON _ = mzero
 
 
@@ -118,8 +122,11 @@ testOfficialLangSpec :: [(String, LangSpecFile)] -> Spec
 testOfficialLangSpec testfiles =
   for_ testfiles $ \(filename, LangSpecFile { tests }) ->
     describe ("File: " ++ takeFileName filename) $
-      for_ tests $ \(LangSpecTest { .. }) ->
-        it ("Name: " ++ name ++ "  Description: " ++ specDescription) $
+      for_ tests $ \maybeRunTest -> do
+        let (doTest, LangSpecTest{..}) = case maybeRunTest of
+              SkipSpec test -> (skipTest, test)
+              RunSpec test -> (it, test)
+        doTest ("Name: " ++ name ++ "  Description: " ++ specDescription) $
           let
             compiled = do
               partials' <- HM.traverseWithKey compileTemplate testPartials
@@ -130,23 +137,25 @@ testOfficialLangSpec testfiles =
               Left m -> expectationFailure $ show m
               Right tmp ->
                 substituteValue tmp specData `shouldBe` expected
+  where
+    skipTest name _ = it name $ pendingWith "Test is skipped"
 
 
 -- | Defines the lambda functions that should be used to test the implementation.
 --
 -- If a test is not applicable (i.e. not possible) for an instance, skip the test
--- by setting Nothing.
+-- with 'Unimplemented'.
 --
--- If a test has all Nothing, then the current implementation is not fully
+-- If a test is completely skipped, then the current implementation is not fully
 -- compliant with the spec, and steps should be taken to have at least one
 -- instance able to satisfy the test.
 data LambdaImplementations = LambdaImplementations
-  { lambdaTreeToTreeM            :: Maybe (STree -> SubM STree)
-  , lambdaContextAndTreeToTree   :: Maybe (Context Value -> STree -> STree)
-  , lambdaContextAndTreeToText   :: Maybe (Context Value -> STree -> Text)
-  , lambdaContextAndTreeToString :: Maybe (Context Value -> STree -> String)
-  , lambdaTreeToTextM            :: Maybe (STree -> SubM Text)
-  , lambdaTextToText             :: Maybe (Text -> Text)
+  { lambdaTreeToTreeM            :: MaybeImplemented (STree -> SubM STree)
+  , lambdaContextAndTreeToTree   :: MaybeImplemented (Context Value -> STree -> STree)
+  , lambdaContextAndTreeToText   :: MaybeImplemented (Context Value -> STree -> Text)
+  , lambdaContextAndTreeToString :: MaybeImplemented (Context Value -> STree -> String)
+  , lambdaTreeToTextM            :: MaybeImplemented (STree -> SubM Text)
+  , lambdaTextToText             :: MaybeImplemented (Text -> Text)
   }
 
 instance ToMustache LambdaImplementations where
@@ -160,11 +169,18 @@ instance ToMustache LambdaImplementations where
     ]
 
 
+data MaybeImplemented a = Implemented a | Unimplemented
+
+instance ToMustache a => ToMustache (MaybeImplemented a) where
+  toMustache (Implemented a) = toMustache a
+  toMustache Unimplemented = Null
+
+
 -- | https://github.com/mustache/spec/blob/master/specs/~lambdas.yml
 lambdaSpecs :: [(String, LangSpecFile)]
 lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
   ( "lambdas.yml (" ++ label ++ ")"
-  , lambdaSpecFile { tests = mapMaybe (chooseLambda key) $ tests lambdaSpecFile }
+  , lambdaSpecFile { tests = map (chooseLambda key) $ tests lambdaSpecFile }
   )
   where
     allLambdaImplementations =
@@ -176,13 +192,13 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
       , ("lambdaTextToText",             "Text -> Text")
       ]
 
-    chooseLambda :: Text -> LangSpecTest -> Maybe LangSpecTest
-    chooseLambda key test = fromMaybe (error $ "Could not set lambda in specData: " ++ show test) $ do
+    chooseLambda :: Text -> MaybeRunSpec LangSpecTest -> MaybeRunSpec LangSpecTest
+    chooseLambda key (RunSpec test) = fromMaybe (error $ "Could not set lambda in specData: " ++ show test) $ do
       Object o <- pure $ specData test
       Object lambdaImplementations <- HM.lookup "lambda" o
       HM.lookup key lambdaImplementations >>= \case
-        v@(Lambda lambdaFunc) -> return $ Just $ test { specData = Object $ HM.insert "lambda" v o }
-        Null -> return Nothing
+        v@(Lambda lambdaFunc) -> return $ RunSpec $ test { specData = Object $ HM.insert "lambda" v o }
+        Null -> return $ SkipSpec test
         _ -> mzero
 
     lambdaSpecFile = LangSpecFile
@@ -201,189 +217,189 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
           , "the current delimiters, then interpolated in place of the section."
           ]
       , tests =
-        [ LangSpecTest
+        [ RunSpec LangSpecTest
             { name = "Interpolation"
             , specDescription = "A lambda's return value should be interpolated."
             , specData = object
                 -- "lambda": (_) => "world"
                 [ "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Just $ \_ -> return [TextBlock "world"]
-                    , lambdaContextAndTreeToTree = Just $ \_ _ -> [TextBlock "world"]
-                    , lambdaContextAndTreeToText = Just $ \_ _ -> "world"
-                    , lambdaContextAndTreeToString = Just $ \_ _ -> "world"
-                    , lambdaTreeToTextM = Just $ \_ -> return "world"
-                    , lambdaTextToText = Just $ \_ -> "world"
+                    { lambdaTreeToTreeM = Implemented $ \_ -> return [TextBlock "world"]
+                    , lambdaContextAndTreeToTree = Implemented $ \_ _ -> [TextBlock "world"]
+                    , lambdaContextAndTreeToText = Implemented $ \_ _ -> "world"
+                    , lambdaContextAndTreeToString = Implemented $ \_ _ -> "world"
+                    , lambdaTreeToTextM = Implemented $ \_ -> return "world"
+                    , lambdaTextToText = Implemented $ \_ -> "world"
                     }
                 ]
             , template = "Hello, {{lambda}}!"
             , expected = "Hello, world!"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Interpolation - Expansion"
             , specDescription = "A lambda's return value should be parsed."
             , specData = object
                 -- "lambda": (_) => "{{planet}}"
                 [ "planet" ~> T.pack "world"
                 , "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Nothing
-                    , lambdaContextAndTreeToTree = Nothing
-                    , lambdaContextAndTreeToText = Nothing
-                    , lambdaContextAndTreeToString = Nothing
-                    , lambdaTreeToTextM = Nothing
-                    , lambdaTextToText = Nothing
+                    { lambdaTreeToTreeM = Unimplemented
+                    , lambdaContextAndTreeToTree = Unimplemented
+                    , lambdaContextAndTreeToText = Unimplemented
+                    , lambdaContextAndTreeToString = Unimplemented
+                    , lambdaTreeToTextM = Unimplemented
+                    , lambdaTextToText = Unimplemented
                     }
                 ]
             , template = "Hello, {{lambda}}!"
             , expected = "Hello, world!"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Interpolation - Alternate Delimiters"
             , specDescription = "A lambda's return value should parse with the default delimiters."
             , specData = object
                 -- "lambda": (_) => "|planet| => {{planet}}"
                 [ "planet" ~> T.pack "world"
                 , "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Nothing
-                    , lambdaContextAndTreeToTree = Nothing
-                    , lambdaContextAndTreeToText = Nothing
-                    , lambdaContextAndTreeToString = Nothing
-                    , lambdaTreeToTextM = Nothing
-                    , lambdaTextToText = Nothing
+                    { lambdaTreeToTreeM = Unimplemented
+                    , lambdaContextAndTreeToTree = Unimplemented
+                    , lambdaContextAndTreeToText = Unimplemented
+                    , lambdaContextAndTreeToString = Unimplemented
+                    , lambdaTreeToTextM = Unimplemented
+                    , lambdaTextToText = Unimplemented
                     }
                 ]
             , template = "{{= | | =}}\nHello, (|&lambda|)!"
             , expected = "Hello, (|planet| => world)!"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Interpolation - Multiple Calls"
             , specDescription = "Interpolated lambdas should not be cached."
             , specData = object
                 -- "lambda": (_) => { mutateGlobalState(); return someValue }
                 [ "planet" ~> T.pack "world"
                 , "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Nothing
-                    , lambdaContextAndTreeToTree = Nothing
-                    , lambdaContextAndTreeToText = Nothing
-                    , lambdaContextAndTreeToString = Nothing
-                    , lambdaTreeToTextM = Nothing
-                    , lambdaTextToText = Nothing
+                    { lambdaTreeToTreeM = Unimplemented
+                    , lambdaContextAndTreeToTree = Unimplemented
+                    , lambdaContextAndTreeToText = Unimplemented
+                    , lambdaContextAndTreeToString = Unimplemented
+                    , lambdaTreeToTextM = Unimplemented
+                    , lambdaTextToText = Unimplemented
                     }
                 ]
             , template = "{{lambda}} == {{{lambda}}} == {{lambda}}"
             , expected = "1 == 2 == 3"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Escaping"
             , specDescription = "Lambda results should be appropriately escaped."
             , specData = object
                 -- "lambda": (_) => ">"
                 [ "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Just $ \_ -> return [TextBlock ">"]
-                    , lambdaContextAndTreeToTree = Just $ \_ _ -> [TextBlock ">"]
-                    , lambdaContextAndTreeToText = Just $ \_ _ -> ">"
-                    , lambdaContextAndTreeToString = Just $ \_ _ -> ">"
-                    , lambdaTreeToTextM = Just $ \_ -> return ">"
-                    , lambdaTextToText = Just $ \_ -> ">"
+                    { lambdaTreeToTreeM = Implemented $ \_ -> return [TextBlock ">"]
+                    , lambdaContextAndTreeToTree = Implemented $ \_ _ -> [TextBlock ">"]
+                    , lambdaContextAndTreeToText = Implemented $ \_ _ -> ">"
+                    , lambdaContextAndTreeToString = Implemented $ \_ _ -> ">"
+                    , lambdaTreeToTextM = Implemented $ \_ -> return ">"
+                    , lambdaTextToText = Implemented $ \_ -> ">"
                     }
                 ]
             , template = "<{{lambda}}{{{lambda}}}"
             , expected = "<&gt;>"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Section"
             , specDescription = "Lambdas used for sections should receive the raw section string."
             , specData = object
                 -- "lambda": (t) => if t == "{{x}}" then "yes" else "no"
                 [ "x" ~> T.pack "Error!"
                 , "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Nothing
-                    , lambdaContextAndTreeToTree = Nothing
-                    , lambdaContextAndTreeToText = Nothing
-                    , lambdaContextAndTreeToString = Nothing
-                    , lambdaTreeToTextM = Nothing
-                    , lambdaTextToText = Nothing
+                    { lambdaTreeToTreeM = Unimplemented
+                    , lambdaContextAndTreeToTree = Unimplemented
+                    , lambdaContextAndTreeToText = Unimplemented
+                    , lambdaContextAndTreeToString = Unimplemented
+                    , lambdaTreeToTextM = Unimplemented
+                    , lambdaTextToText = Unimplemented
                     }
                 ]
             , template = "<{{#lambda}}{{x}}{{/lambda}}>"
             , expected = "<yes>"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Section - Expansion"
             , specDescription = "Lambdas used for sections should have their results parsed."
             , specData = object
                 -- "lambda": (t) => t + "{{planet}}" + t
                 [ "planet" ~> T.pack "Earth"
                 , "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Nothing
-                    , lambdaContextAndTreeToTree = Nothing
-                    , lambdaContextAndTreeToText = Nothing
-                    , lambdaContextAndTreeToString = Nothing
-                    , lambdaTreeToTextM = Nothing
-                    , lambdaTextToText = Nothing
+                    { lambdaTreeToTreeM = Unimplemented
+                    , lambdaContextAndTreeToTree = Unimplemented
+                    , lambdaContextAndTreeToText = Unimplemented
+                    , lambdaContextAndTreeToString = Unimplemented
+                    , lambdaTreeToTextM = Unimplemented
+                    , lambdaTextToText = Unimplemented
                     }
                 ]
             , template = "<{{#lambda}}-{{/lambda}}>"
             , expected = "<-Earth->"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Section - Alternate Delimiters"
             , specDescription = "Lambdas used for sections should parse with the current delimiters."
             , specData = object
                 -- "lambda": (t) => t + "{{planet}} => |planet|" + t
                 [ "planet" ~> T.pack "Earth"
                 , "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Nothing
-                    , lambdaContextAndTreeToTree = Nothing
-                    , lambdaContextAndTreeToText = Nothing
-                    , lambdaContextAndTreeToString = Nothing
-                    , lambdaTreeToTextM = Nothing
-                    , lambdaTextToText = Nothing
+                    { lambdaTreeToTreeM = Unimplemented
+                    , lambdaContextAndTreeToTree = Unimplemented
+                    , lambdaContextAndTreeToText = Unimplemented
+                    , lambdaContextAndTreeToString = Unimplemented
+                    , lambdaTreeToTextM = Unimplemented
+                    , lambdaTextToText = Unimplemented
                     }
                 ]
             , template = "{{= | | =}}<|#lambda|-|/lambda|>"
             , expected = "<-{{planet}} => Earth->"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Section - Multiple Calls"
             , specDescription = "Lambdas used for sections should not be cached."
             , specData = object
                 -- "lambda": (t) => "__" + t + "__"
                 [ "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Just $ \tree -> return $ [TextBlock "__"] <> tree <> [TextBlock "__"]
-                    , lambdaContextAndTreeToTree = Just $ \_ tree -> [TextBlock "__"] <> tree <> [TextBlock "__"]
-                    , lambdaContextAndTreeToText = Nothing
-                    , lambdaContextAndTreeToString = Nothing
-                    , lambdaTreeToTextM = Just $ \tree -> do
+                    { lambdaTreeToTreeM = Implemented $ \tree -> return $ [TextBlock "__"] <> tree <> [TextBlock "__"]
+                    , lambdaContextAndTreeToTree = Implemented $ \_ tree -> [TextBlock "__"] <> tree <> [TextBlock "__"]
+                    , lambdaContextAndTreeToText = Unimplemented
+                    , lambdaContextAndTreeToString = Unimplemented
+                    , lambdaTreeToTextM = Implemented $ \tree -> do
                         (_, res) <- catchSubstitute $ substituteAST tree
                         return $ "__" <> res <> "__"
-                    , lambdaTextToText = Just $ \t -> "__" <> t <> "__"
+                    , lambdaTextToText = Implemented $ \t -> "__" <> t <> "__"
                     }
                 ]
             , template = "{{#lambda}}FILE{{/lambda}} != {{#lambda}}LINE{{/lambda}}"
             , expected = "__FILE__ != __LINE__"
             , testPartials = HM.empty
             }
-        , LangSpecTest
+        , RunSpec LangSpecTest
             { name = "Inverted Section"
             , specDescription = "Lambdas used for inverted sections should be considered truthy."
             , specData = object
                 -- "lambda": (_) => false
                 [ "static" ~> T.pack "static"
                 , "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Just $ \_ -> return mempty
-                    , lambdaContextAndTreeToTree = Just $ \_ _ -> mempty
-                    , lambdaContextAndTreeToText = Just $ \_ _ -> mempty
-                    , lambdaContextAndTreeToString = Just $ \_ _ -> mempty
-                    , lambdaTreeToTextM = Just $ \_ -> return mempty
-                    , lambdaTextToText = Just $ \_ -> mempty
+                    { lambdaTreeToTreeM = Implemented $ \_ -> return mempty
+                    , lambdaContextAndTreeToTree = Implemented $ \_ _ -> mempty
+                    , lambdaContextAndTreeToText = Implemented $ \_ _ -> mempty
+                    , lambdaContextAndTreeToString = Implemented $ \_ _ -> mempty
+                    , lambdaTreeToTextM = Implemented $ \_ -> return mempty
+                    , lambdaTextToText = Implemented $ \_ -> mempty
                     }
                 ]
             , template = "<{{^lambda}}{{static}}{{/lambda}}>"
