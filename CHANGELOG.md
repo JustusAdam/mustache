@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v2.3.2
+
+- Added support for GHC 9.0.1
+
 ## v2.3.0
 
 - Changed `EitherT` to `ExceptT` (deprecation)
