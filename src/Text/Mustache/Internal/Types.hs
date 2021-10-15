@@ -13,6 +13,8 @@ import           Control.Arrow
 import           Control.Monad.RWS        hiding (lift)
 import qualified Data.Aeson               as Aeson
 import           Data.Int                 (Int8, Int16, Int32, Int64)
+import qualified Data.Aeson.Key           as Key
+import qualified Data.Aeson.KeyMap        as KeyMap
 import           Data.Foldable            (toList)
 import qualified Data.HashMap.Strict      as HM
 import qualified Data.HashSet             as HS
@@ -241,6 +243,9 @@ instance (ToMustache ω) => ToMustache (Map.Map LT.Text ω) where
 instance (ToMustache ω) => ToMustache (Map.Map String ω) where
   toMustache = mapInstanceHelper pack
 
+instance ToMustache v => ToMustache (KeyMap.KeyMap v) where
+  toMustache = mapInstanceHelper Key.toText . KeyMap.toMap
+
 mapInstanceHelper :: ToMustache v => (a -> Text) -> Map.Map a v -> Value
 mapInstanceHelper conv =
   toMustache
@@ -268,7 +273,7 @@ instance ToMustache (STree -> SubM STree) where
     toMustache = Lambda
 
 instance ToMustache Aeson.Value where
-  toMustache (Aeson.Object o) = Object $ fmap toMustache o
+  toMustache (Aeson.Object o) = toMustache o
   toMustache (Aeson.Array  a) = Array $ fmap toMustache a
   toMustache (Aeson.Number n) = Number n
   toMustache (Aeson.String s) = String s
