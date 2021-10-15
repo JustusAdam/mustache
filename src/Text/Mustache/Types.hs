@@ -32,7 +32,7 @@ module Text.Mustache.Types
 
 import           Control.Monad.Reader
 import qualified Data.Aeson                   as Aeson
-import qualified Data.HashMap.Strict          as HM
+import qualified Data.Map.Strict              as Map
 import           Data.Text                    (Text)
 import           Text.Mustache.Internal.Types
 
@@ -63,7 +63,7 @@ import           Text.Mustache.Internal.Types
 -- instance but provide an instance for the 'ToJSON' typeclass we can use the
 -- '~=' operator.
 object :: [Pair] -> Value
-object = Object . HM.fromList
+object = Object . Map.fromList
 
 
 -- | Map keys to values that provide a 'ToMustache' instance

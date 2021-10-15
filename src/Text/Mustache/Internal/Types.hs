@@ -16,8 +16,6 @@ import           Data.Int                 (Int8, Int16, Int32, Int64)
 import qualified Data.Aeson.Key           as Key
 import qualified Data.Aeson.KeyMap        as KeyMap
 import           Data.Foldable            (toList)
-import qualified Data.HashMap.Strict      as HM
-import qualified Data.HashSet             as HS
 import qualified Data.Map                 as Map
 import           Data.Scientific
 import qualified Data.Sequence            as Seq
@@ -73,7 +71,7 @@ search (key:nextKeys) = (>>= innerSearch nextKeys) <$> go
                   _ -> return Nothing
         case focus of
           Object o ->
-            case HM.lookup key o of
+            case Map.lookup key o of
               Just res -> return $ Just res
               _ -> searchParents
           _ -> searchParents
@@ -83,7 +81,7 @@ search (key:nextKeys) = (>>= innerSearch nextKeys) <$> go
 -- other than an object before the key is expended.
 innerSearch :: [Key] -> Value -> Maybe Value
 innerSearch []     v          = Just v
-innerSearch (y:ys) (Object o) = HM.lookup y o >>= innerSearch ys
+innerSearch (y:ys) (Object o) = Map.lookup y o >>= innerSearch ys
 innerSearch _      _          = Nothing
 
 
@@ -115,7 +113,7 @@ data DataIdentifier
 -- | A list-like structure used in 'Value'
 type Array  = V.Vector Value
 -- | A map-like structure used in 'Value'
-type Object = HM.HashMap Text Value
+type Object = Map.Map Text Value
 -- | Source type for constructing 'Object's
 type Pair   = (Text, Value)
 
@@ -234,13 +232,13 @@ instance ToMustache ω => ToMustache (Seq.Seq ω) where
 instance ToMustache ω => ToMustache (V.Vector ω) where
   toMustache = Array . fmap toMustache
 
-instance (ToMustache ω) => ToMustache (Map.Map Text ω) where
-  toMustache = mapInstanceHelper id
+instance ToMustache ω => ToMustache (Map.Map Text ω) where
+  toMustache = Object . fmap toMustache
 
-instance (ToMustache ω) => ToMustache (Map.Map LT.Text ω) where
+instance ToMustache ω => ToMustache (Map.Map LT.Text ω) where
   toMustache = mapInstanceHelper LT.toStrict
 
-instance (ToMustache ω) => ToMustache (Map.Map String ω) where
+instance ToMustache ω => ToMustache (Map.Map String ω) where
   toMustache = mapInstanceHelper pack
 
 instance ToMustache v => ToMustache (KeyMap.KeyMap v) where
@@ -250,24 +248,8 @@ mapInstanceHelper :: ToMustache v => (a -> Text) -> Map.Map a v -> Value
 mapInstanceHelper conv =
   toMustache
   . Map.foldrWithKey
-    (\k -> HM.insert (conv k) . toMustache)
-    HM.empty
-
-instance ToMustache ω => ToMustache (HM.HashMap Text ω) where
-  toMustache = Object . fmap toMustache
-
-instance ToMustache ω => ToMustache (HM.HashMap LT.Text ω) where
-  toMustache = hashMapInstanceHelper LT.toStrict
-
-instance ToMustache ω => ToMustache (HM.HashMap String ω) where
-  toMustache = hashMapInstanceHelper pack
-
-hashMapInstanceHelper :: ToMustache v => (a -> Text) -> HM.HashMap a v -> Value
-hashMapInstanceHelper conv =
-  toMustache
-  . HM.foldrWithKey
-    (\k -> HM.insert (conv k) . toMustache)
-    HM.empty
+    (\k -> Map.insert (conv k) . toMustache)
+    Map.empty
 
 instance ToMustache (STree -> SubM STree) where
     toMustache = Lambda
@@ -279,9 +261,6 @@ instance ToMustache Aeson.Value where
   toMustache (Aeson.String s) = String s
   toMustache (Aeson.Bool   b) = Bool b
   toMustache Aeson.Null       = Null
-
-instance ToMustache ω => ToMustache (HS.HashSet ω) where
-  toMustache = listToMustache' . HS.toList
 
 instance ToMustache ω => ToMustache (Set.Set ω) where
   toMustache = listToMustache' . Set.toList
@@ -371,7 +350,7 @@ instance ( ToMustache α
     ]
 
 -- | A collection of templates with quick access via their hashed names
-type TemplateCache = HM.HashMap String Template
+type TemplateCache = Map.Map String Template
 
 -- | Type of key used for retrieving data from 'Value's
 type Key = Text
@@ -386,7 +365,7 @@ data Template = Template
   } deriving (Show)
 
 instance Lift TemplateCache where
-  lift m = [| HM.fromList $(lift $ HM.toList m) |]
+  lift m = [| Map.fromList $(lift $ Map.toList m) |]
 
 --Data.Text 1.2.4.0 introduces its own Lift Text instance
 #if !MIN_VERSION_text(1,2,4)

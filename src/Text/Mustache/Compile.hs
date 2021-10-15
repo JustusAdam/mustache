@@ -21,7 +21,7 @@ import           Control.Monad
 import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bool
-import           Data.HashMap.Strict        as HM
+import           Data.Map.Strict            as Map
 import           Data.Text                  hiding (concat, find, map, uncons)
 import qualified Data.Text.IO               as TIO
 import           Language.Haskell.TH        (Exp, Loc, Q, loc_filename,
@@ -70,12 +70,12 @@ compileTemplateWithCache searchSpace templates initName =
   where
     compile' :: FilePath
              -> StateT
-                (HM.HashMap String Template)
+                (Map.Map String Template)
                 (ExceptT ParseError IO)
                 Template
     compile' name' = do
       templates' <- get
-      case HM.lookup name' templates' of
+      case Map.lookup name' templates' of
         Just template -> return template
         Nothing -> do
           rawSource <- lift $ getFile searchSpace name'
@@ -85,8 +85,8 @@ compileTemplateWithCache searchSpace templates initName =
           foldM
             (\st@(Template { partials = p }) partialName -> do
               nt <- compile' partialName
-              modify (HM.insert partialName nt)
-              return (st { partials = HM.insert partialName nt p })
+              modify (Map.insert partialName nt)
+              return (st { partials = Map.insert partialName nt p })
             )
             compiled
             (getPartials mSTree)
@@ -175,7 +175,7 @@ embedTemplate :: [FilePath] -> FilePath -> Q Exp
 embedTemplate searchSpace filename = do
   template <- either (fail . ("Parse error in mustache template: " ++) . show) pure =<< THS.runIO (automaticCompile searchSpace filename)
   let possiblePaths = do
-        fname <- (filename:) . HM.keys . partials $ template
+        fname <- (filename:) . Map.keys . partials $ template
         path <- searchSpace
         pure $ path </> fname
   mapM_ addDependentRelativeFile =<< THS.runIO (filterM doesFileExist possiblePaths)

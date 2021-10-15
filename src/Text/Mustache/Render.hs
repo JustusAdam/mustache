@@ -29,7 +29,7 @@ import           Control.Arrow                (first, second)
 import           Control.Monad
 
 import           Data.Foldable                (for_)
-import           Data.HashMap.Strict          as HM hiding (keys, map)
+import           Data.Map.Strict              as Map hiding (keys, map)
 import           Data.Maybe                   (fromMaybe)
 
 import           Data.Scientific              (floatingOrInteger)
@@ -170,11 +170,11 @@ substituteNode (Variable escaped (NamedData varName)) =
 -- substituting a partial
 substituteNode (Partial indent pName) = do
   cPartials <- asks snd
-  case HM.lookup pName cPartials of
+  case Map.lookup pName cPartials of
     Nothing -> tellError $ PartialNotFound pName
     Just t ->
       let ast' = handleIndent indent $ ast t
-      in local (second (partials t `HM.union`)) $ substituteAST ast'
+      in local (second (partials t `Map.union`)) $ substituteAST ast'
 
 
 showValueType :: Value -> String
