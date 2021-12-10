@@ -12,6 +12,9 @@ module Text.Mustache.Internal.Types where
 import           Control.Arrow
 import           Control.Monad.RWS        hiding (lift)
 import qualified Data.Aeson               as Aeson
+#if MIN_VERSION_aeson(2,0,0)
+import qualified Data.Aeson.KeyMap        as KM
+#endif
 import           Data.Int                 (Int8, Int16, Int32, Int64)
 import           Data.Foldable            (toList)
 import qualified Data.HashMap.Strict      as HM
@@ -269,7 +272,12 @@ instance ToMustache (STree -> SubM STree) where
     toMustache = Lambda
 
 instance ToMustache Aeson.Value where
-  toMustache (Aeson.Object o) = Object $ fmap toMustache o
+  toMustache (Aeson.Object o) = Object $ fmap toMustache
+#if MIN_VERSION_aeson(2,0,0)
+    (KM.toHashMapText o)
+#else
+    o
+#endif
   toMustache (Aeson.Array  a) = Array $ fmap toMustache a
   toMustache (Aeson.Number n) = Number n
   toMustache (Aeson.String s) = String s
