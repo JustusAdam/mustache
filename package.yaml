@@ -1,5 +1,5 @@
 name: mustache
-version: '2.3.2'
+version: '2.4.0'
 synopsis: A mustache template parser library.
 description: ! 'Allows parsing and rendering template files with mustache markup.
   See the
@@ -14,7 +14,7 @@ description: ! 'Allows parsing and rendering template files with mustache markup
 category: Development
 author: Justus Adam
 maintainer: dev@justus.science
-copyright: (c) 2015 - 2019 Justus Adam
+copyright: (c) 2015 - 2022 Justus Adam
 license: BSD3
 homepage: https://github.com/JustusAdam/mustache
 git: git://github.com/JustusAdam/mustache.git

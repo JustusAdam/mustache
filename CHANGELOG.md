@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v2.4.0
+
+- Support for aeson 2
+
 ## v2.3.2
 
 - Added support for GHC 9.0.1
