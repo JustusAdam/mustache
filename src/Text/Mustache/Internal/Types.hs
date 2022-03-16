@@ -394,11 +394,14 @@ deriveLift ''DataIdentifier
 deriveLift ''Node
 deriveLift ''Template
 
+-- Data.HashMap 0.2.17.0 introduces its own Lift instance
+#if !MIN_VERSION_unordered_containers(0,2,17)
 instance Lift TemplateCache where
 #if MIN_VERSION_template_haskell(2,16,0)
   liftTyped m = [|| HM.fromList $$(liftTyped $ HM.toList m) ||]
 #else
   lift m = [| HM.fromList $(lift $ HM.toList m) |]
+#endif
 #endif
 
 --Data.Text 1.2.4.0 introduces its own Lift Text instance
