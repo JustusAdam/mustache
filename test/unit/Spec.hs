@@ -161,6 +161,12 @@ substituteSpec =
           ])
       `shouldBe` "var1var2"
 
+    it "substitutes an inverse section when the key is present (and null)" $
+      substitute
+        (toTemplate [InvertedSection (NamedData ["section"]) [TextBlock "t"]])
+        (object ["section" ~> Null])
+      `shouldBe` "t"
+
     it "does not substitute a section when the key is not present" $
       substitute
         (toTemplate [Section (NamedData ["section"]) [TextBlock "t"]])

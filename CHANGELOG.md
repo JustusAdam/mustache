@@ -1,5 +1,9 @@
 # Mustache library changelog
 
+## v2.4.1
+
+- Also treat Null as falsey in inverted sections
+
 ## v2.4.0
 
 - Support for aeson 2

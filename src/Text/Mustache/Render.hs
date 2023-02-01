@@ -154,6 +154,7 @@ substituteNode (InvertedSection (NamedData secName) invSecSTree) =
   search secName >>= \case
     Just (Bool False) -> contents
     Just (Array a)    | V.null a -> contents
+    Just Null         -> contents
     Nothing           -> contents
     _                 -> return ()
   where
