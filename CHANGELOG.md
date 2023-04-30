@@ -1,8 +1,11 @@
 # Mustache library changelog
 
-## v2.4.1
+## v2.4.2
 
 - Also treat Null as falsey in inverted sections
+
+## v2.4.1
+- Compatibility with `containers >= 0.2.17`
 
 ## v2.4.0
 
