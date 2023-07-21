@@ -28,7 +28,6 @@ import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
 import           Data.Word                (Word8, Word16, Word32, Word64)
 import           Language.Haskell.TH.Lift (deriveLift)
-import           Language.Haskell.TH.Syntax
 import           Numeric.Natural          (Natural)
 
 
@@ -101,6 +100,7 @@ type ASTree α = [Node α]
 data Node α
   = TextBlock α
   | Section DataIdentifier (ASTree α)
+  | ExistingSection DataIdentifier (ASTree α)
   | InvertedSection DataIdentifier (ASTree α)
   | Variable Bool DataIdentifier
   | Partial (Maybe α) FilePath

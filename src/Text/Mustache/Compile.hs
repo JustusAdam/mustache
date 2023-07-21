@@ -118,6 +118,7 @@ getPartials = join . fmap getPartials'
 getPartials' :: Node Text -> [FilePath]
 getPartials' (Partial _ p) = return p
 getPartials' (Section _ n) = getPartials n
+getPartials' (ExistingSection _ n) = getPartials n
 getPartials' (InvertedSection _ n) = getPartials n
 getPartials' _                     = mempty
 
