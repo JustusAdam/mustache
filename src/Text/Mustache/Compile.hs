@@ -22,7 +22,7 @@ import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bool
 import           Data.HashMap.Strict        as HM
-import           Data.Text                  hiding (concat, find, map, uncons)
+import           Data.Text                  hiding (concat, find, map, show, uncons)
 import qualified Data.Text.IO               as TIO
 import           Language.Haskell.TH        (Exp, Loc, Q, loc_filename,
                                              loc_start, location)

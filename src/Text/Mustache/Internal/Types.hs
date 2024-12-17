@@ -23,7 +23,8 @@ import qualified Data.Map                 as Map
 import           Data.Scientific
 import qualified Data.Sequence            as Seq
 import qualified Data.Set                 as Set
-import           Data.Text
+import           Data.Text                (Text)
+import qualified Data.Text                as T
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
 import           Data.Word                (Word8, Word16, Word32, Word64)
@@ -203,7 +204,7 @@ instance ToMustache Word64 where
 
 instance ToMustache Char where
   toMustache = toMustache . (:[])
-  listToMustache = String . pack
+  listToMustache = String . T.pack
 
 instance ToMustache Value where
   toMustache = id
@@ -243,7 +244,7 @@ instance (ToMustache ω) => ToMustache (Map.Map LT.Text ω) where
   toMustache = mapInstanceHelper LT.toStrict
 
 instance (ToMustache ω) => ToMustache (Map.Map String ω) where
-  toMustache = mapInstanceHelper pack
+  toMustache = mapInstanceHelper T.pack
 
 mapInstanceHelper :: ToMustache v => (a -> Text) -> Map.Map a v -> Value
 mapInstanceHelper conv =
@@ -259,7 +260,7 @@ instance ToMustache ω => ToMustache (HM.HashMap LT.Text ω) where
   toMustache = hashMapInstanceHelper LT.toStrict
 
 instance ToMustache ω => ToMustache (HM.HashMap String ω) where
-  toMustache = hashMapInstanceHelper pack
+  toMustache = hashMapInstanceHelper T.pack
 
 hashMapInstanceHelper :: ToMustache v => (a -> Text) -> HM.HashMap a v -> Value
 hashMapInstanceHelper conv =
@@ -409,4 +410,3 @@ instance Lift TemplateCache where
 instance Lift Text where
   lift = lift . unpack
 #endif
-
