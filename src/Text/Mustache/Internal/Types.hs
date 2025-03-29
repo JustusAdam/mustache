@@ -23,7 +23,7 @@ import qualified Data.Map                 as Map
 import           Data.Scientific
 import qualified Data.Sequence            as Seq
 import qualified Data.Set                 as Set
-import           Data.Text
+import           Data.Text (Text, pack, unpack)
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
 import           Data.Word                (Word8, Word16, Word32, Word64)

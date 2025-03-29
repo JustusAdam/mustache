@@ -16,21 +16,22 @@ author: Justus Adam
 maintainer: dev@justus.science
 copyright: (c) 2015 - 2022 Justus Adam
 license: BSD3
-homepage: https://github.com/JustusAdam/mustache
-git: git://github.com/JustusAdam/mustache.git
-bug-reports: https://github.com/JustusAdam/mustache/issues
-tested-with: GHC>=7.8 && <=7.10.2
+
+github: JustusAdam/mustache
+
 extra-source-files:
 - README.md
 - CHANGELOG.md
 - test/unit/examples/*.txt.mustache
 - test/unit/examples/partials/*.txt.mustache
+
 dependencies:
 - base >=4.7 && <5
 - text
 - aeson
 - bytestring
 - filepath
+
 library:
   source-dirs: src
   default-extensions:
@@ -60,6 +61,7 @@ library:
   - containers
   - template-haskell
   - th-lift
+
 executables:
   haskell-mustache:
     main: Main.hs
@@ -71,6 +73,7 @@ executables:
     - mustache
     - yaml
     - cmdargs
+
 tests:
   unit-tests:
     main: Spec.hs
