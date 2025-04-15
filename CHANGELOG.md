@@ -1,6 +1,6 @@
 # Mustache library changelog
 
-## v2.4.1
+## v2.4.3
 - Compatibility with GHC 9.12.*
 
 ## v2.4.2
