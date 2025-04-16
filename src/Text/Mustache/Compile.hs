@@ -8,8 +8,6 @@ Stability   : experimental
 Portability : POSIX
 -}
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
-{-# LANGUAGE QuasiQuotes     #-}
-{-# LANGUAGE TemplateHaskell #-}
 module Text.Mustache.Compile
   ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
   , compileTemplate, cacheFromList, getPartials, mustache, embedTemplate, embedSingleTemplate
@@ -109,7 +107,7 @@ compileTemplate name' = fmap (flip (Template name') mempty) . parse name'
   Same as @join . fmap getPartials'@
 -}
 getPartials :: STree -> [FilePath]
-getPartials = join . fmap getPartials'
+getPartials = (getPartials' =<<)
 
 
 {-|

@@ -7,12 +7,12 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE TupleSections         #-}
 module Text.Mustache.Parser
   (
   -- * Generic parsing functions
@@ -38,7 +38,9 @@ module Text.Mustache.Parser
 import           Control.Monad
 import           Data.Char           (isAlphaNum, isSpace)
 import           Data.List           (nub)
+#if !MIN_VERSION_base(4,11,0)
 import           Data.Monoid         ((<>))
+#endif
 import           Data.Text           as T (Text, null, pack)
 import           Prelude             as Prel
 import           Text.Mustache.Types
@@ -46,7 +48,7 @@ import           Text.Parsec         as P hiding (endOfLine, parse)
 
 
 -- | Initial configuration for the parser
-data MustacheConf = MustacheConf
+newtype MustacheConf = MustacheConf
   { delimiters :: (String, String)
   }
 
@@ -181,9 +183,7 @@ flushText :: Parser STree
 flushText = do
   s@(MustacheState { textStack = text }) <- getState
   putState $ s { textStack = mempty }
-  return $ if T.null text
-              then []
-              else [TextBlock text]
+  return [TextBlock text | not (T.null text)]
 
 
 finishFile :: Parser STree
@@ -304,7 +304,7 @@ genParseTagEnd emod = do
             <|> try (void $ char nestingSeparator))
 
         others <- (char nestingSeparator >> parseOne)
-                  <|> (const mempty <$> (spaces >> string nEnd))
+                  <|> (mempty <$ (spaces >> string nEnd))
         return $ pack one : others
   spaces
   (try (char implicitIterator) >> spaces >> string nEnd >> return Implicit)
