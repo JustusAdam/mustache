@@ -8,9 +8,7 @@ Stability   : experimental
 Portability : POSIX
 -}
 {-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE TypeSynonymInstances       #-}
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
 module Text.Mustache.Render
   (
@@ -192,10 +190,10 @@ handleIndent :: Maybe Text -> STree -> STree
 handleIndent Nothing ast' = ast'
 handleIndent (Just indentation) ast' = preface <> content
   where
-    preface = if T.null indentation then [] else [TextBlock indentation]
+    preface = [TextBlock indentation | not (T.null indentation)]
     content = if T.null indentation
       then ast'
-      else reverse $ fromMaybe [] (uncurry (:) . first dropper <$> uncons (reverse fullIndented))
+      else reverse $ maybe [] (uncurry (:) . first dropper) (uncons (reverse fullIndented))
       where
         fullIndented = fmap (indentBy indentation) ast'
         dropper (TextBlock t) = TextBlock $

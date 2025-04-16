@@ -150,7 +150,6 @@ rsubstitute to an empty string.
 
 
 -}
-{-# LANGUAGE LambdaCase #-}
 module Text.Mustache
   (
   -- * Compiling

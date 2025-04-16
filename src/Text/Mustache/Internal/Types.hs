@@ -23,12 +23,15 @@ import qualified Data.Map                 as Map
 import           Data.Scientific
 import qualified Data.Sequence            as Seq
 import qualified Data.Set                 as Set
-import           Data.Text (Text, pack, unpack)
+import           Data.Text                (Text)
+import qualified Data.Text                as T
 import qualified Data.Text.Lazy           as LT
 import qualified Data.Vector              as V
 import           Data.Word                (Word8, Word16, Word32, Word64)
 import           Language.Haskell.TH.Lift (deriveLift)
-import           Language.Haskell.TH.Syntax
+#if !MIN_VERSION_unordered_containers(0,2,17) || !MIN_VERSION_text(1,2,4)
+import           Language.Haskell.TH.Syntax (Lift (..))
+#endif
 import           Numeric.Natural          (Natural)
 
 
@@ -71,7 +74,7 @@ search (key:nextKeys) = (>>= innerSearch nextKeys) <$> go
     go = asks fst >>= \case
       Context parents focus -> do
         let searchParents = case parents of
-                  (newFocus: newParents) -> shiftContext (Context newParents newFocus) $ go
+                  (newFocus: newParents) -> shiftContext (Context newParents newFocus) go
                   _ -> return Nothing
         case focus of
           Object o ->
@@ -203,7 +206,7 @@ instance ToMustache Word64 where
 
 instance ToMustache Char where
   toMustache = toMustache . (:[])
-  listToMustache = String . pack
+  listToMustache = String . T.pack
 
 instance ToMustache Value where
   toMustache = id
@@ -243,7 +246,7 @@ instance (ToMustache ω) => ToMustache (Map.Map LT.Text ω) where
   toMustache = mapInstanceHelper LT.toStrict
 
 instance (ToMustache ω) => ToMustache (Map.Map String ω) where
-  toMustache = mapInstanceHelper pack
+  toMustache = mapInstanceHelper T.pack
 
 mapInstanceHelper :: ToMustache v => (a -> Text) -> Map.Map a v -> Value
 mapInstanceHelper conv =
@@ -259,7 +262,7 @@ instance ToMustache ω => ToMustache (HM.HashMap LT.Text ω) where
   toMustache = hashMapInstanceHelper LT.toStrict
 
 instance ToMustache ω => ToMustache (HM.HashMap String ω) where
-  toMustache = hashMapInstanceHelper pack
+  toMustache = hashMapInstanceHelper T.pack
 
 hashMapInstanceHelper :: ToMustache v => (a -> Text) -> HM.HashMap a v -> Value
 hashMapInstanceHelper conv =
@@ -407,6 +410,5 @@ instance Lift TemplateCache where
 --Data.Text 1.2.4.0 introduces its own Lift Text instance
 #if !MIN_VERSION_text(1,2,4)
 instance Lift Text where
-  lift = lift . unpack
+  lift = lift . T.unpack
 #endif
-
