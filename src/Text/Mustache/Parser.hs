@@ -15,23 +15,18 @@ Portability : POSIX
 {-# LANGUAGE OverloadedStrings     #-}
 module Text.Mustache.Parser
   (
-  -- * Generic parsing functions
-
+    -- * Generic parsing functions
     parse, parseWithConf
 
-  -- * Configurations
-
+    -- * Configurations
   , MustacheConf(..), defaultConf
 
-  -- * Parser
-
+    -- * Parser
   , Parser, MustacheState
 
-  -- * Mustache Constants
-
+    -- * Mustache Constants
   , sectionBegin, sectionEnd, invertedSectionBegin, unescape2, unescape1
   , delimiterChange, nestingSeparator
-
   ) where
 
 
@@ -72,38 +67,60 @@ data ParseTagRes
 -- | @#@
 sectionBegin :: Char
 sectionBegin = '#'
+
+
 -- | @/@
 sectionEnd :: Char
 sectionEnd = '/'
+
+
 -- | @>@
 partialBegin :: Char
 partialBegin = '>'
+
+
 -- | @^@
 invertedSectionBegin :: Char
 invertedSectionBegin = '^'
+
+
 -- | @{@ and @}@
 unescape2 :: (Char, Char)
 unescape2 = ('{', '}')
+
+
 -- | @&@
 unescape1 :: Char
 unescape1 = '&'
+
+
 -- | @=@
 delimiterChange :: Char
 delimiterChange = '='
+
+
 -- | @.@
 nestingSeparator :: Char
 nestingSeparator = '.'
+
+
 -- | @!@
 comment :: Char
 comment = '!'
+
+
 -- | @.@
 implicitIterator :: Char
 implicitIterator = '.'
+
+
 -- | Cannot be a letter, number or the nesting separation Character @.@
 isAllowedDelimiterCharacter :: Char -> Bool
 isAllowedDelimiterCharacter =
   not . Prel.or . sequence
     [ isSpace, isAlphaNum, (== nestingSeparator) ]
+
+
 allowedDelimiterCharacter :: Parser Char
 allowedDelimiterCharacter =
   satisfy isAllowedDelimiterCharacter
@@ -241,8 +258,16 @@ continueFromTag (SectionEnd name) = do
     { currentSectionName }) <- getState
   case currentSectionName of
     Just name' | name' == name -> flushText
-    Just name' -> parserFail $ "Expected closing sequence for \"" <> show name <> "\" got \"" <> show name' <> "\"."
-    Nothing -> parserFail $ "Encountered closing sequence for \"" <> show name <> "\" which has never been opened."
+    Just name' -> parserFail $
+         "Expected closing sequence for \""
+      <> show name
+      <> "\" got \""
+      <> show name'
+      <> "\"."
+    Nothing -> parserFail $
+         "Encountered closing sequence for \""
+      <> show name
+      <> "\" which has never been opened."
 continueFromTag (Tag tag) = do
   textNodes    <- flushText
   furtherNodes <- parseText

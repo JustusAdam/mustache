@@ -37,12 +37,23 @@ import           Numeric.Natural          (Natural)
 
 -- | Type of errors we may encounter during substitution.
 data SubstitutionError
-  = VariableNotFound [Key] -- ^ The template contained a variable for which there was no data counterpart in the current context
-  | InvalidImplicitSectionContextType String -- ^ When substituting an implicit section the current context had an unsubstitutable type
-  | InvertedImplicitSection -- ^ Inverted implicit sections should never occur
-  | SectionTargetNotFound [Key] -- ^ The template contained a section for which there was no data counterpart in the current context
-  | PartialNotFound FilePath -- ^ The template contained a partial for which there was no data counterpart in the current context
-  | DirectlyRenderedValue Value -- ^ A complex value such as an Object or Array was directly rendered into the template (warning)
+  = VariableNotFound [Key]
+    -- ^ The template contained a variable for which there was no data
+    -- counterpart in the current context
+  | InvalidImplicitSectionContextType String
+    -- ^ When substituting an implicit section the current context had an
+    -- unsubstitutable type
+  | InvertedImplicitSection
+    -- ^ Inverted implicit sections should never occur
+  | SectionTargetNotFound [Key]
+    -- ^ The template contained a section for which there was no data
+    -- counterpart in the current context
+  | PartialNotFound FilePath
+    -- ^ The template contained a partial for which there was no data
+    -- counterpart in the current context
+  | DirectlyRenderedValue Value
+    -- ^ A complex value such as an Object or Array was directly rendered into
+    -- the template (warning)
   deriving (Show)
 
 
@@ -54,13 +65,19 @@ tellSuccess :: Text -> SubM ()
 tellSuccess s = SubM $ tell ([], [s])
 
 
-newtype SubM a = SubM { runSubM' :: RWS (Context Value, TemplateCache) ([SubstitutionError], [Text]) ()  a } deriving (Monad, Functor, Applicative, MonadReader (Context Value, TemplateCache))
+newtype SubM a = SubM
+  { runSubM' :: RWS (Context Value, TemplateCache) ([SubstitutionError], [Text]) () a
+  }
+  deriving (Monad, Functor, Applicative, MonadReader (Context Value, TemplateCache))
+
 
 runSubM :: SubM a -> Context Value -> TemplateCache -> ([SubstitutionError], [Text])
 runSubM comp ctx cache = snd $ evalRWS (runSubM' comp) (ctx, cache) ()
 
+
 shiftContext :: Context Value -> SubM a -> SubM a
 shiftContext = local . first . const
+
 
 -- | Search for a key in the current context.
 --
@@ -74,8 +91,8 @@ search (key:nextKeys) = (>>= innerSearch nextKeys) <$> go
     go = asks fst >>= \case
       Context parents focus -> do
         let searchParents = case parents of
-                  (newFocus: newParents) -> shiftContext (Context newParents newFocus) go
-                  _ -> return Nothing
+              (newFocus: newParents) -> shiftContext (Context newParents newFocus) go
+              _ -> return Nothing
         case focus of
           Object o ->
             case HM.lookup key o of
@@ -90,7 +107,6 @@ innerSearch :: [Key] -> Value -> Maybe Value
 innerSearch []     v          = Just v
 innerSearch (y:ys) (Object o) = HM.lookup y o >>= innerSearch ys
 innerSearch _      _          = Nothing
-
 
 
 -- | Syntax tree for a mustache template
@@ -129,6 +145,7 @@ type Pair   = (Text, Value)
 data Context α = Context { ctxtParents :: [α], ctxtFocus :: α }
   deriving (Eq, Show, Ord)
 
+
 -- | Internal value representation
 data Value
   = Object !Object
@@ -153,8 +170,10 @@ instance Show Value where
 listToMustache' :: ToMustache ω => [ω] -> Value
 listToMustache' = Array . V.fromList . fmap toMustache
 
+
 integralToMustache :: Integral ω => ω -> Value
 integralToMustache = toMustache . toInteger
+
 
 -- | Conversion class
 class ToMustache ω where
@@ -248,12 +267,14 @@ instance (ToMustache ω) => ToMustache (Map.Map LT.Text ω) where
 instance (ToMustache ω) => ToMustache (Map.Map String ω) where
   toMustache = mapInstanceHelper T.pack
 
+
 mapInstanceHelper :: ToMustache v => (a -> Text) -> Map.Map a v -> Value
 mapInstanceHelper conv =
   toMustache
   . Map.foldrWithKey
     (\k -> HM.insert (conv k) . toMustache)
     HM.empty
+
 
 instance ToMustache ω => ToMustache (HM.HashMap Text ω) where
   toMustache = Object . fmap toMustache
@@ -264,12 +285,14 @@ instance ToMustache ω => ToMustache (HM.HashMap LT.Text ω) where
 instance ToMustache ω => ToMustache (HM.HashMap String ω) where
   toMustache = hashMapInstanceHelper T.pack
 
+
 hashMapInstanceHelper :: ToMustache v => (a -> Text) -> HM.HashMap a v -> Value
 hashMapInstanceHelper conv =
   toMustache
   . HM.foldrWithKey
     (\k -> HM.insert (conv k) . toMustache)
     HM.empty
+
 
 instance ToMustache (STree -> SubM STree) where
     toMustache = Lambda
@@ -377,11 +400,14 @@ instance ( ToMustache α
     , toMustache h
     ]
 
+
 -- | A collection of templates with quick access via their hashed names
 type TemplateCache = HM.HashMap String Template
 
+
 -- | Type of key used for retrieving data from 'Value's
 type Key = Text
+
 
 {-|
   A compiled Template with metadata.
@@ -397,6 +423,7 @@ deriveLift ''DataIdentifier
 deriveLift ''Node
 deriveLift ''Template
 
+
 -- Data.HashMap 0.2.17.0 introduces its own Lift instance
 #if !MIN_VERSION_unordered_containers(0,2,17)
 instance Lift TemplateCache where
@@ -406,6 +433,7 @@ instance Lift TemplateCache where
   lift m = [| HM.fromList $(lift $ HM.toList m) |]
 #endif
 #endif
+
 
 --Data.Text 1.2.4.0 introduces its own Lift Text instance
 #if !MIN_VERSION_text(1,2,4)

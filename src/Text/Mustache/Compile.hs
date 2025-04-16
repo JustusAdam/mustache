@@ -9,8 +9,16 @@ Portability : POSIX
 -}
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module Text.Mustache.Compile
-  ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
-  , compileTemplate, cacheFromList, getPartials, mustache, embedTemplate, embedSingleTemplate
+  ( automaticCompile
+  , localAutomaticCompile
+  , TemplateCache
+  , compileTemplateWithCache
+  , compileTemplate
+  , cacheFromList
+  , getPartials
+  , mustache
+  , embedTemplate
+  , embedSingleTemplate
   ) where
 
 
@@ -20,7 +28,7 @@ import           Control.Monad.Except
 import           Control.Monad.State
 import           Data.Bool
 import           Data.HashMap.Strict        as HM
-import           Data.Text (Text, pack)
+import           Data.Text                  (Text, pack)
 import qualified Data.Text.IO               as TIO
 import           Language.Haskell.TH        (Exp, Loc, Q, loc_filename,
                                              loc_start, location)
@@ -34,6 +42,7 @@ import           Text.Mustache.Types
 import           Text.Parsec.Error
 import           Text.Parsec.Pos
 import           Text.Printf
+
 
 {-|
   Compiles a mustache template provided by name including the mentioned partials.
@@ -153,14 +162,15 @@ getFile (templateDir : xs) fp =
 -- > foo = [mustache|This is my inline {{ template }} created at compile time|]
 --
 -- Partials are not supported in the QuasiQuoter
-
 mustache :: QuasiQuoter
 mustache = QuasiQuoter {quoteExp = \unprocessedTemplate -> do
   l <- location
   compileTemplateTH (fileAndLine l) unprocessedTemplate }
 
+
 -- |
--- Compile a mustache 'Template' at compile time providing a search space for any partials. Usage:
+-- Compile a mustache 'Template' at compile time providing a search space for
+-- any partials. Usage:
 --
 -- > {-# LANGUAGE TemplateHaskell #-}
 -- > import Text.Mustache.Compile (embedTemplate)
@@ -168,7 +178,6 @@ mustache = QuasiQuoter {quoteExp = \unprocessedTemplate -> do
 -- > foo :: Template
 -- > foo = $(embedTemplate ["dir", "dir/partials"] "file.mustache")
 --
-
 embedTemplate :: [FilePath] -> FilePath -> Q Exp
 embedTemplate searchSpace filename = do
   template <- either (fail . ("Parse error in mustache template: " ++) . show) pure =<< THS.runIO (automaticCompile searchSpace filename)
@@ -178,6 +187,7 @@ embedTemplate searchSpace filename = do
         pure $ path </> fname
   mapM_ addDependentRelativeFile =<< THS.runIO (filterM doesFileExist possiblePaths)
   THS.lift template
+
 
 -- |
 -- Compile a mustache 'Template' at compile time. Usage:
@@ -189,23 +199,25 @@ embedTemplate searchSpace filename = do
 -- > foo = $(embedSingleTemplate "dir/file.mustache")
 --
 -- Partials are not supported in embedSingleTemplate
-
 embedSingleTemplate :: FilePath -> Q Exp
 embedSingleTemplate filePath = do
   addDependentRelativeFile filePath
   compileTemplateTH filePath =<< THS.runIO (readFile filePath)
 
+
 fileAndLine :: Loc -> String
 fileAndLine loc = loc_filename loc ++ ":" ++ (show . fst . loc_start $ loc)
+
 
 compileTemplateTH :: String -> String -> Q Exp
 compileTemplateTH filename unprocessed =
   either (fail . ("Parse error in mustache template: " ++) . show) THS.lift $ compileTemplate filename (pack unprocessed)
 
+
 addDependentRelativeFile :: FilePath -> Q ()
 addDependentRelativeFile = THS.qAddDependentFile <=< THS.runIO . makeAbsolute
 
--- ERRORS
 
+-- ERRORS
 fileNotFound :: FilePath -> ParseError
 fileNotFound fp = newErrorMessage (Message $ printf "Template file '%s' not found" fp) (initialPos fp)

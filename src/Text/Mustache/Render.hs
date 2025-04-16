@@ -7,18 +7,18 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# OPTIONS_GHC -fno-warn-orphans  #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Text.Mustache.Render
   (
-  -- * Substitution
+    -- * Substitution
     substitute, substituteValue
-  -- * Checked substitution
+    -- * Checked substitution
   , checkedSubstitute, checkedSubstituteValue, SubstitutionError(..)
-  -- * Working with Context
+    -- * Working with Context
   , Context(..), search, innerSearch, SubM, substituteNode, substituteAST, catchSubstitute
-  -- * Util
+    -- * Util
   , toString
   ) where
 
@@ -97,13 +97,19 @@ substituteValue = (snd .) . checkedSubstituteValue
 -}
 checkedSubstituteValue :: Template -> Value -> ([SubstitutionError], Text)
 checkedSubstituteValue template dataStruct =
-  second T.concat $ runSubM (substituteAST (ast template)) (Context mempty dataStruct) (partials template)
+  second T.concat $ runSubM
+    (substituteAST (ast template))
+    (Context mempty dataStruct)
+    (partials template)
+
 
 -- | Catch the results of running the inner substitution.
 catchSubstitute :: SubM a -> SubM (a, Text)
-catchSubstitute = fmap (second (T.concat . snd)) . SubM . hideResults . listen . runSubM'
+catchSubstitute =
+  fmap (second (T.concat . snd)) . SubM . hideResults . listen . runSubM'
   where
     hideResults = censor (\(errs, _) -> (errs, []))
+
 
 -- | Substitute an entire 'STree' rather than just a single 'Node'
 substituteAST :: STree -> SubM ()
@@ -202,6 +208,7 @@ handleIndent (Just indentation) ast' = preface <> content
             else t
         dropper a = a
 
+
 indentBy :: Text -> Node Text -> Node Text
 indentBy indent p@(Partial (Just indent') name')
   | T.null indent = p
@@ -211,11 +218,13 @@ indentBy indent (TextBlock t) = TextBlock $ replace "\n" ("\n" <> indent) t
 indentBy _ a = a
 
 
-
 -- | Converts values to Text as required by the mustache standard
 toString :: Value -> SubM Text
 toString (String t) = return t
-toString (Number n) = return $ either (pack . show) (pack . show) (floatingOrInteger n :: Either Double Integer)
+toString (Number n) = return $ either
+  (pack . show)
+  (pack . show)
+  (floatingOrInteger n :: Either Double Integer)
 toString (Lambda l) = do
   ((), res) <- catchSubstitute $ substituteAST =<< l []
   return res

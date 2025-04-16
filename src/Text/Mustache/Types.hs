@@ -9,21 +9,21 @@ Portability : POSIX
 -}
 module Text.Mustache.Types
   (
-  -- * Types for the Parser / Template
+    -- * Types for the Parser / Template
     ASTree
   , STree
   , Node(..)
   , DataIdentifier(..)
   , Template(..)
   , TemplateCache
-  -- * Types for the Substitution / Data
+    -- * Types for the Substitution / Data
   , Value(..)
   , Key
-  -- ** Converting
+    -- ** Converting
   , object
   , (~>), (↝), (~=), (⥱)
   , ToMustache, toMustache, mFromJSON, integralToMustache
-  -- ** Representation
+    -- ** Representation
   , Array, Object, Pair
   , SubM, askContext, askPartials
   , Context(..)

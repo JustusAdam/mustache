@@ -152,37 +152,31 @@ rsubstitute to an empty string.
 -}
 module Text.Mustache
   (
-  -- * Compiling
+    -- * Compiling
 
-  -- ** Automatic
+    -- ** Automatic
     automaticCompile, localAutomaticCompile
 
-  -- ** Manually
+    -- ** Manually
   , compileTemplateWithCache, compileTemplate, Template(..)
 
-  -- * Rendering
+    -- * Rendering
 
-  -- ** Generic
-
+    -- ** Generic
   , substitute, checkedSubstitute
 
-  -- ** Specialized
-
+    -- ** Specialized
   , substituteValue, checkedSubstituteValue
 
-  -- ** In Lambdas
-
+    -- ** In Lambdas
   , substituteNode, substituteAST, catchSubstitute
 
-  -- * Data Conversion
+    -- * Data Conversion
   , ToMustache, toMustache, integralToMustache, object, (~>), (~=)
 
-  -- ** Utilities for lambdas
-
+    -- ** Utilities for lambdas
   , overText
-
   ) where
-
 
 
 import           Text.Mustache.Compile
@@ -191,6 +185,7 @@ import           Text.Mustache.Types
 import qualified Data.Text as T
 
 
--- | Creates a 'Lambda' which first renders the contained section and then applies the supplied function
+-- | Creates a 'Lambda' which first renders the contained section and then
+-- applies the supplied function
 overText :: (T.Text -> T.Text) -> Value
 overText f = toMustache $ fmap (f . snd) . catchSubstitute . substituteAST
