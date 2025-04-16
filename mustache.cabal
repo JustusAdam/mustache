@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -36,26 +36,25 @@ source-repository head
 library
   exposed-modules:
       Text.Mustache
-      Text.Mustache.Types
-      Text.Mustache.Parser
       Text.Mustache.Compile
+      Text.Mustache.Parser
       Text.Mustache.Render
+      Text.Mustache.Types
   other-modules:
       Text.Mustache.Internal
       Text.Mustache.Internal.Types
-      Paths_mustache
   hs-source-dirs:
       src
   default-extensions:
       LambdaCase
       TupleSections
   other-extensions:
+      LambdaCase
       NamedFieldPuns
       OverloadedStrings
-      LambdaCase
-      TupleSections
-      TemplateHaskell
       QuasiQuotes
+      TemplateHaskell
+      TupleSections
   ghc-options: -Wall
   build-depends:
       aeson
@@ -76,8 +75,6 @@ library
 
 executable haskell-mustache
   main-is: Main.hs
-  other-modules:
-      Paths_mustache
   hs-source-dirs:
       app
   ghc-options: -threaded -Wall
@@ -95,8 +92,6 @@ executable haskell-mustache
 test-suite language-specifications
   type: exitcode-stdio-1.0
   main-is: Language.hs
-  other-modules:
-      Paths_mustache
   hs-source-dirs:
       test/integration
   build-depends:
@@ -119,8 +114,6 @@ test-suite language-specifications
 test-suite unit-tests
   type: exitcode-stdio-1.0
   main-is: Spec.hs
-  other-modules:
-      Paths_mustache
   hs-source-dirs:
       test/unit
   build-depends:
