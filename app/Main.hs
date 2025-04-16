@@ -1,8 +1,10 @@
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NamedFieldPuns     #-}
 module Main (main) where
 
 
+import           Control.Exception               (Exception (..))
 import           Data.Aeson                      (Value, eitherDecode)
 import           Data.Bifunctor                  (first)
 import qualified Data.ByteString                 as B (readFile)
@@ -14,7 +16,9 @@ import           Data.Yaml                       (decodeEither')
 import           System.Console.CmdArgs.Implicit (Data, Typeable, argPos, args,
                                                   cmdArgs, def, help, summary,
                                                   typ, (&=))
+import           System.Exit                     (exitFailure)
 import           System.FilePath                 (takeExtension)
+import           System.IO                       (hPutStrLn, stderr)
 import           Text.Mustache                   (automaticCompile, substitute,
                                                   toMustache)
 
@@ -45,7 +49,7 @@ readJSON = fmap eitherDecode . BS.readFile
 
 
 readYAML :: FilePath -> IO (Either String Value)
-readYAML = fmap (first show . decodeEither') . B.readFile
+readYAML = fmap (first displayException . decodeEither') . B.readFile
 
 
 main :: IO ()
@@ -55,7 +59,12 @@ main = do
   eitherTemplate <- automaticCompile templateDirs template
 
   case eitherTemplate of
-    Left err -> print err
+    Left err -> handleError $
+#if MIN_VERSION_parsec(3,1,17)
+      displayException err
+#else
+      show err
+#endif
     Right compiledTemplate ->
       for_ dataFiles $ \file -> do
 
@@ -67,6 +76,8 @@ main = do
         decoded <- decoder file
 
         either
-          putStrLn
+          handleError
           (TIO.putStrLn . substitute compiledTemplate . toMustache)
           decoded
+ where
+  handleError msg = hPutStrLn stderr msg >> exitFailure
