@@ -1,5 +1,8 @@
 # Mustache library changelog
 
+## v2.4.3
+- Compatibility with GHC 9.12.*
+
 ## v2.4.2
 
 - Also treat Null as falsey in inverted sections
