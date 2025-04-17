@@ -1,38 +1,64 @@
-{-# OPTIONS_GHC -fno-warn-orphans  #-}
-{-# LANGUAGE FlexibleContexts           #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE CPP                        #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
-module Text.Mustache.Internal.Types where
+module Text.Mustache.Internal.Types
+  ( Array
+  , ASTree
+  , Context (..)
+  , DataIdentifier (..)
+  , Key
+  , Node (..)
+  , Object
+  , Pair
+  , STree
+  , SubM (..)
+  , SubstitutionError (..)
+  , Template (..)
+  , TemplateCache
+  , ToMustache (..)
+  , Value (..)
+  , innerSearch
+  , integralToMustache
+  , runSubM
+  , search
+  , shiftContext
+  , tellError
+  , tellSuccess
+  ) where
 
 
-import           Control.Arrow
-import           Control.Monad.RWS        hiding (lift)
-import qualified Data.Aeson               as Aeson
+import           Control.Arrow ( Arrow (..) )
+import           Control.Monad.RWS
+                   ( MonadReader (..), MonadWriter (..), RWS, RWST (..), asks
+                   , evalRWS
+                   )
+import qualified Data.Aeson as Aeson
 #if MIN_VERSION_aeson(2,0,0)
-import qualified Data.Aeson.KeyMap        as KM
+import qualified Data.Aeson.KeyMap as KM
 #endif
-import           Data.Int                 (Int8, Int16, Int32, Int64)
-import           Data.Foldable            (toList)
-import qualified Data.HashMap.Strict      as HM
-import qualified Data.HashSet             as HS
-import qualified Data.Map                 as Map
-import           Data.Scientific
-import qualified Data.Sequence            as Seq
-import qualified Data.Set                 as Set
-import           Data.Text                (Text)
-import qualified Data.Text                as T
-import qualified Data.Text.Lazy           as LT
-import qualified Data.Vector              as V
-import           Data.Word                (Word8, Word16, Word32, Word64)
+import           Data.Foldable ( toList )
+import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
+import           Data.Int ( Int8, Int16, Int32, Int64 )
+import qualified Data.Map as Map
+import           Data.Scientific ( Scientific, fromFloatDigits )
+import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
+import           Data.Text ( Text )
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Vector as V
+import           Data.Word ( Word8, Word16, Word32, Word64 )
 import           Language.Haskell.TH.Lift (deriveLift)
 #if !MIN_VERSION_unordered_containers(0,2,17) || !MIN_VERSION_text(1,2,4)
-import           Language.Haskell.TH.Syntax (Lift (..))
+import           Language.Haskell.TH.Syntax ( Lift (..) )
 #endif
-import           Numeric.Natural          (Natural)
+import           Numeric.Natural ( Natural )
 
 
 -- | Type of errors we may encounter during substitution.

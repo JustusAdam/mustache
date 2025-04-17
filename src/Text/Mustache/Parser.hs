@@ -16,30 +16,40 @@ Portability : POSIX
 module Text.Mustache.Parser
   (
     -- * Generic parsing functions
-    parse, parseWithConf
-
+    parse
+  , parseWithConf
     -- * Configurations
-  , MustacheConf(..), defaultConf
-
+  , MustacheConf (..)
+  , defaultConf
     -- * Parser
-  , Parser, MustacheState
-
+  , Parser
+  , MustacheState
     -- * Mustache Constants
-  , sectionBegin, sectionEnd, invertedSectionBegin, unescape2, unescape1
-  , delimiterChange, nestingSeparator
+  , sectionBegin
+  , sectionEnd
+  , invertedSectionBegin
+  , unescape2
+  , unescape1
+  , delimiterChange
+  , nestingSeparator
   ) where
 
 
-import           Control.Monad
-import           Data.Char           (isAlphaNum, isSpace)
-import           Data.List           (nub)
+import           Control.Monad ( void, when )
+import           Data.Char ( isAlphaNum, isSpace )
+import           Data.List ( nub )
 #if !MIN_VERSION_base(4,11,0)
-import           Data.Monoid         ((<>))
+import           Data.Monoid ( (<>) )
 #endif
-import           Data.Text           as T (Text, null, pack)
-import           Prelude             as Prel
-import           Text.Mustache.Types
-import           Text.Parsec         as P hiding (endOfLine, parse)
+import           Data.Text ( Text )
+import qualified Data.Text as T
+import           Text.Mustache.Types ( DataIdentifier (..), Node (..), STree )
+import           Text.Parsec
+                   ( Parsec, ParseError, (<|>), anyChar, char, choice, eof
+                   , getState, lookAhead, many, manyTill, modifyState, noneOf
+                   , optionMaybe, oneOf, parserFail, putState, runParser
+                   , satisfy, skipMany, space, spaces, string, try
+                   )
 
 
 -- | Initial configuration for the parser
@@ -117,7 +127,7 @@ implicitIterator = '.'
 -- | Cannot be a letter, number or the nesting separation Character @.@
 isAllowedDelimiterCharacter :: Char -> Bool
 isAllowedDelimiterCharacter =
-  not . Prel.or . sequence
+  not . or . sequence
     [ isSpace, isAlphaNum, (== nestingSeparator) ]
 
 
@@ -168,7 +178,7 @@ parse = parseWithConf defaultConf
 
 -- | Parse using a custom initial configuration
 parseWithConf :: MustacheConf -> FilePath -> Text -> Either ParseError STree
-parseWithConf = P.runParser parseText . initState
+parseWithConf = runParser parseText . initState
 
 
 parseText :: Parser STree
@@ -180,7 +190,7 @@ parseText = do
 
 
 appendStringStack :: String -> Parser ()
-appendStringStack t = modifyState (\s -> s { textStack = textStack s <> pack t})
+appendStringStack t = modifyState (\s -> s { textStack = textStack s <> T.pack t})
 
 
 continueLine :: Parser STree
@@ -227,7 +237,7 @@ parseLine = do
         case tag of
           Tag (Partial _ name) ->
             ( standaloneEnding >>
-              continueFromTag (Tag (Partial (Just (pack initialWhitespace)) name))
+              continueFromTag (Tag (Partial (Just (T.pack initialWhitespace)) name))
             ) <|> continueNoStandalone
           Tag _ -> continueNoStandalone
           _     ->
@@ -288,7 +298,10 @@ switchOnTag = do
     , Tag . Variable False
         <$> (try (char (fst unescape2)) >> genParseTagEnd (return $ snd unescape2))
     , Tag . Partial Nothing
-        <$> (try (char partialBegin) >> spaces >> (noneOf (nub end) `manyTill` try (spaces >> string end)))
+        <$> (  try (char partialBegin)
+            >> spaces
+            >> (noneOf (nub end) `manyTill` try (spaces >> string end))
+            )
     , return HandledTag
         << (try (char delimiterChange) >> parseDelimChange)
     , SectionBegin True
@@ -330,7 +343,7 @@ genParseTagEnd emod = do
 
         others <- (char nestingSeparator >> parseOne)
                   <|> (mempty <$ (spaces >> string nEnd))
-        return $ pack one : others
+        return $ T.pack one : others
   spaces
   (try (char implicitIterator) >> spaces >> string nEnd >> return Implicit)
     <|> (NamedData <$> parseOne)

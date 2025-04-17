@@ -15,7 +15,7 @@ module Text.Mustache.Internal
   ) where
 
 
-import           Data.Char   (ord)
+import           Data.Char ( ord )
 import qualified Data.IntMap as IntMap
 import qualified Data.Text   as T
 

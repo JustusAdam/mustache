@@ -22,26 +22,32 @@ module Text.Mustache.Compile
   ) where
 
 
-import           Control.Arrow              ((&&&))
-import           Control.Monad
+import           Control.Arrow ( (&&&) )
+import           Control.Monad ( (<=<), filterM, foldM )
 import           Control.Monad.Except
+                   ( ExceptT (..), MonadError (..), runExceptT )
 import           Control.Monad.State
-import           Data.Bool
-import           Data.HashMap.Strict        as HM
-import           Data.Text                  (Text, pack)
-import qualified Data.Text.IO               as TIO
-import           Language.Haskell.TH        (Exp, Loc, Q, loc_filename,
-                                             loc_start, location)
-import           Language.Haskell.TH.Quote  (QuasiQuoter (QuasiQuoter),
-                                             quoteExp)
+                   ( MonadState (..), MonadTrans (..), StateT, evalStateT
+                   , modify
+                   )
+import           Data.Bool ( bool )
+import qualified Data.HashMap.Strict as HM
+import           Data.Text ( Text )
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import           Language.Haskell.TH
+                   ( Exp, Loc, Q, loc_filename, loc_start, location )
+import           Language.Haskell.TH.Quote
+                   ( QuasiQuoter (..), quoteExp )
 import qualified Language.Haskell.TH.Syntax as THS
-import           System.Directory
-import           System.FilePath
-import           Text.Mustache.Parser
+import           System.Directory ( doesFileExist, makeAbsolute )
+import           System.FilePath ( (</>) )
+import           Text.Mustache.Parser ( parse )
 import           Text.Mustache.Types
-import           Text.Parsec.Error
-import           Text.Parsec.Pos
-import           Text.Printf
+                   ( STree, Template (..), TemplateCache, Node (..) )
+import           Text.Parsec.Error ( Message (..), ParseError, newErrorMessage )
+import           Text.Parsec.Pos ( initialPos )
+import           Text.Printf ( printf )
 
 
 {-|
@@ -101,7 +107,7 @@ compileTemplateWithCache searchSpace templates initName =
 
 -- | Flatten a list of Templates into a single 'TemplateCache'
 cacheFromList :: [Template] -> TemplateCache
-cacheFromList = flattenPartials . fromList . fmap (name &&& id)
+cacheFromList = flattenPartials . HM.fromList . fmap (name &&& id)
 
 
 -- | Compiles a 'Template' directly from 'Text' without checking for missing partials.
@@ -130,7 +136,7 @@ getPartials' _                     = mempty
 
 
 flattenPartials :: TemplateCache -> TemplateCache
-flattenPartials m = foldrWithKey (insertWith (\_ b -> b)) m m
+flattenPartials m = HM.foldrWithKey (HM.insertWith (\_ b -> b)) m m
 
 
 {-|
@@ -211,7 +217,10 @@ fileAndLine loc = loc_filename loc ++ ":" ++ (show . fst . loc_start $ loc)
 
 compileTemplateTH :: String -> String -> Q Exp
 compileTemplateTH filename unprocessed =
-  either (fail . ("Parse error in mustache template: " ++) . show) THS.lift $ compileTemplate filename (pack unprocessed)
+  either
+    (fail . ("Parse error in mustache template: " ++) . show)
+    THS.lift
+    (compileTemplate filename (T.pack unprocessed))
 
 
 addDependentRelativeFile :: FilePath -> Q ()
@@ -220,4 +229,6 @@ addDependentRelativeFile = THS.qAddDependentFile <=< THS.runIO . makeAbsolute
 
 -- ERRORS
 fileNotFound :: FilePath -> ParseError
-fileNotFound fp = newErrorMessage (Message $ printf "Template file '%s' not found" fp) (initialPos fp)
+fileNotFound fp = newErrorMessage
+  (Message $ printf "Template file '%s' not found" fp)
+  (initialPos fp)

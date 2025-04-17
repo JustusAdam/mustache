@@ -153,36 +153,49 @@ rsubstitute to an empty string.
 module Text.Mustache
   (
     -- * Compiling
-
     -- ** Automatic
-    automaticCompile, localAutomaticCompile
-
+    automaticCompile
+  , localAutomaticCompile
     -- ** Manually
-  , compileTemplateWithCache, compileTemplate, Template(..)
-
+  , compileTemplateWithCache
+  , compileTemplate
+  , Template (..)
     -- * Rendering
-
     -- ** Generic
-  , substitute, checkedSubstitute
-
+  , substitute
+  , checkedSubstitute
     -- ** Specialized
-  , substituteValue, checkedSubstituteValue
-
+  , substituteValue
+  , checkedSubstituteValue
     -- ** In Lambdas
-  , substituteNode, substituteAST, catchSubstitute
-
+  , substituteNode
+  , substituteAST
+  , catchSubstitute
     -- * Data Conversion
-  , ToMustache, toMustache, integralToMustache, object, (~>), (~=)
-
+  , ToMustache
+  , toMustache
+  , integralToMustache
+  , object
+  , (~>)
+  , (~=)
     -- ** Utilities for lambdas
   , overText
   ) where
 
 
-import           Text.Mustache.Compile
-import           Text.Mustache.Render
-import           Text.Mustache.Types
 import qualified Data.Text as T
+import           Text.Mustache.Compile
+                   ( automaticCompile, compileTemplate, compileTemplateWithCache
+                   , localAutomaticCompile
+                   )
+import           Text.Mustache.Render
+                   ( catchSubstitute, checkedSubstitute, checkedSubstituteValue
+                   , substitute, substituteAST, substituteNode, substituteValue
+                   )
+import           Text.Mustache.Types
+                   ( Template (..), ToMustache (..), Value, (~>), (~=)
+                   , integralToMustache, object
+                   )
 
 
 -- | Creates a 'Lambda' which first renders the contained section and then
