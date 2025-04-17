@@ -9,32 +9,47 @@ Portability : POSIX
 -}
 module Text.Mustache.Types
   (
-  -- * Types for the Parser / Template
+    -- * Types for the Parser / Template
     ASTree
   , STree
-  , Node(..)
-  , DataIdentifier(..)
-  , Template(..)
+  , Node (..)
+  , DataIdentifier (..)
+  , Template (..)
   , TemplateCache
-  -- * Types for the Substitution / Data
-  , Value(..)
+    -- * Types for the Substitution / Data
+  , Value (..)
   , Key
-  -- ** Converting
+    -- ** Converting
   , object
-  , (~>), (↝), (~=), (⥱)
-  , ToMustache, toMustache, mFromJSON, integralToMustache
-  -- ** Representation
-  , Array, Object, Pair
-  , SubM, askContext, askPartials
-  , Context(..)
+  , (~>)
+  , (↝)
+  , (~=)
+  , (⥱)
+  , ToMustache
+  , toMustache
+  , mFromJSON
+  , integralToMustache
+    -- ** Representation
+  , Array
+  , Object
+  , Pair
+  , SubM
+  , askContext
+  , askPartials
+  , Context (..)
   ) where
 
 
-import           Control.Monad.Reader
-import qualified Data.Aeson                   as Aeson
-import qualified Data.HashMap.Strict          as HM
-import           Data.Text                    (Text)
+import           Control.Monad.Reader ( asks )
+import qualified Data.Aeson as Aeson
+import qualified Data.HashMap.Strict as HM
+import           Data.Text ( Text )
 import           Text.Mustache.Internal.Types
+                   ( ASTree, Array, Context (..), DataIdentifier (..), Key
+                   , Node (..), Object, Pair, STree, SubM, Template (..)
+                   , TemplateCache, ToMustache (..), Value (..)
+                   , integralToMustache
+                   )
 
 
 -- | Convenience function for creating Object values.

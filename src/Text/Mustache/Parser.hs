@@ -7,45 +7,53 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE TupleSections         #-}
 module Text.Mustache.Parser
   (
-  -- * Generic parsing functions
-
-    parse, parseWithConf
-
-  -- * Configurations
-
-  , MustacheConf(..), defaultConf
-
-  -- * Parser
-
-  , Parser, MustacheState
-
-  -- * Mustache Constants
-
-  , sectionBegin, sectionEnd, invertedSectionBegin, unescape2, unescape1
-  , delimiterChange, nestingSeparator
-
+    -- * Generic parsing functions
+    parse
+  , parseWithConf
+    -- * Configurations
+  , MustacheConf (..)
+  , defaultConf
+    -- * Parser
+  , Parser
+  , MustacheState
+    -- * Mustache Constants
+  , sectionBegin
+  , sectionEnd
+  , invertedSectionBegin
+  , unescape2
+  , unescape1
+  , delimiterChange
+  , nestingSeparator
   ) where
 
 
-import           Control.Monad
-import           Data.Char           (isAlphaNum, isSpace)
-import           Data.List           (nub)
-import           Data.Text           as T (Text, null, pack)
-import           Prelude             as Prel
-import           Text.Mustache.Types
-import           Text.Parsec         as P hiding (endOfLine, parse)
+import           Control.Monad ( void, when )
+import           Data.Char ( isAlphaNum, isSpace )
+import           Data.List ( nub )
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Monoid ( (<>) )
+#endif
+import           Data.Text ( Text )
+import qualified Data.Text as T
+import           Text.Mustache.Types ( DataIdentifier (..), Node (..), STree )
+import           Text.Parsec
+                   ( Parsec, ParseError, (<|>), anyChar, char, choice, eof
+                   , getState, lookAhead, many, manyTill, modifyState, noneOf
+                   , optionMaybe, oneOf, parserFail, putState, runParser
+                   , satisfy, skipMany, space, spaces, string, try
+                   )
 
 
 -- | Initial configuration for the parser
-data MustacheConf = MustacheConf
+newtype MustacheConf = MustacheConf
   { delimiters :: (String, String)
   }
 
@@ -71,41 +79,65 @@ data ParseTagRes
 -- | @#@
 sectionBegin :: Char
 sectionBegin = '#'
+
+
 -- | @/@
 sectionEnd :: Char
 sectionEnd = '/'
+
+
 -- | @>@
 partialBegin :: Char
 partialBegin = '>'
+
+
 -- | @^@
 invertedSectionBegin :: Char
 invertedSectionBegin = '^'
+
+
 -- | @^@
 existingSectionBegin :: Char
 existingSectionBegin = '?'
+
+
 -- | @{@ and @}@
 unescape2 :: (Char, Char)
 unescape2 = ('{', '}')
+
+
 -- | @&@
 unescape1 :: Char
 unescape1 = '&'
+
+
 -- | @=@
 delimiterChange :: Char
 delimiterChange = '='
+
+
 -- | @.@
 nestingSeparator :: Char
 nestingSeparator = '.'
+
+
 -- | @!@
 comment :: Char
 comment = '!'
+
+
 -- | @.@
 implicitIterator :: Char
 implicitIterator = '.'
+
+
 -- | Cannot be a letter, number or the nesting separation Character @.@
 isAllowedDelimiterCharacter :: Char -> Bool
 isAllowedDelimiterCharacter =
-  not . Prel.or . sequence
+  not . or . sequence
     [ isSpace, isAlphaNum, (== nestingSeparator) ]
+
+
 allowedDelimiterCharacter :: Parser Char
 allowedDelimiterCharacter =
   satisfy isAllowedDelimiterCharacter
@@ -153,7 +185,7 @@ parse = parseWithConf defaultConf
 
 -- | Parse using a custom initial configuration
 parseWithConf :: MustacheConf -> FilePath -> Text -> Either ParseError STree
-parseWithConf = P.runParser parseText . initState
+parseWithConf = runParser parseText . initState
 
 
 parseText :: Parser STree
@@ -165,7 +197,7 @@ parseText = do
 
 
 appendStringStack :: String -> Parser ()
-appendStringStack t = modifyState (\s -> s { textStack = textStack s <> pack t})
+appendStringStack t = modifyState (\s -> s { textStack = textStack s <> T.pack t})
 
 
 continueLine :: Parser STree
@@ -185,9 +217,7 @@ flushText :: Parser STree
 flushText = do
   s@(MustacheState { textStack = text }) <- getState
   putState $ s { textStack = mempty }
-  return $ if T.null text
-              then []
-              else [TextBlock text]
+  return [TextBlock text | not (T.null text)]
 
 
 finishFile :: Parser STree
@@ -214,7 +244,7 @@ parseLine = do
         case tag of
           Tag (Partial _ name) ->
             ( standaloneEnding >>
-              continueFromTag (Tag (Partial (Just (pack initialWhitespace)) name))
+              continueFromTag (Tag (Partial (Just (T.pack initialWhitespace)) name))
             ) <|> continueNoStandalone
           Tag _ -> continueNoStandalone
           _     ->
@@ -245,8 +275,16 @@ continueFromTag (SectionEnd name) = do
     { currentSectionName }) <- getState
   case currentSectionName of
     Just name' | name' == name -> flushText
-    Just name' -> parserFail $ "Expected closing sequence for \"" <> show name <> "\" got \"" <> show name' <> "\"."
-    Nothing -> parserFail $ "Encountered closing sequence for \"" <> show name <> "\" which has never been opened."
+    Just name' -> parserFail $
+         "Expected closing sequence for \""
+      <> show name
+      <> "\" got \""
+      <> show name'
+      <> "\"."
+    Nothing -> parserFail $
+         "Encountered closing sequence for \""
+      <> show name
+      <> "\" which has never been opened."
 continueFromTag (Tag tag) = do
   textNodes    <- flushText
   furtherNodes <- parseText
@@ -267,7 +305,10 @@ switchOnTag = do
     , Tag . Variable False
         <$> (try (char (fst unescape2)) >> genParseTagEnd (return $ snd unescape2))
     , Tag . Partial Nothing
-        <$> (try (char partialBegin) >> spaces >> (noneOf (nub end) `manyTill` try (spaces >> string end)))
+        <$> (  try (char partialBegin)
+            >> spaces
+            >> (noneOf (nub end) `manyTill` try (spaces >> string end))
+            )
     , return HandledTag
         << (try (char delimiterChange) >> parseDelimChange)
     , SectionBegin Existing
@@ -313,8 +354,8 @@ genParseTagEnd emod = do
             <|> try (void $ char nestingSeparator))
 
         others <- (char nestingSeparator >> parseOne)
-                  <|> (const mempty <$> (spaces >> string nEnd))
-        return $ pack one : others
+                  <|> (mempty <$ (spaces >> string nEnd))
+        return $ T.pack one : others
   spaces
   (try (char implicitIterator) >> spaces >> string nEnd >> return Implicit)
     <|> (NamedData <$> parseOne)

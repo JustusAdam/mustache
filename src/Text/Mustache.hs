@@ -150,48 +150,55 @@ rsubstitute to an empty string.
 
 
 -}
-{-# LANGUAGE LambdaCase #-}
 module Text.Mustache
   (
-  -- * Compiling
-
-  -- ** Automatic
-    automaticCompile, localAutomaticCompile
-
-  -- ** Manually
-  , compileTemplateWithCache, compileTemplate, Template(..)
-
-  -- * Rendering
-
-  -- ** Generic
-
-  , substitute, checkedSubstitute
-
-  -- ** Specialized
-
-  , substituteValue, checkedSubstituteValue
-
-  -- ** In Lambdas
-
-  , substituteNode, substituteAST, catchSubstitute
-
-  -- * Data Conversion
-  , ToMustache, toMustache, integralToMustache, object, (~>), (~=)
-
-  -- ** Utilities for lambdas
-
+    -- * Compiling
+    -- ** Automatic
+    automaticCompile
+  , localAutomaticCompile
+    -- ** Manually
+  , compileTemplateWithCache
+  , compileTemplate
+  , Template (..)
+    -- * Rendering
+    -- ** Generic
+  , substitute
+  , checkedSubstitute
+    -- ** Specialized
+  , substituteValue
+  , checkedSubstituteValue
+    -- ** In Lambdas
+  , substituteNode
+  , substituteAST
+  , catchSubstitute
+    -- * Data Conversion
+  , ToMustache
+  , toMustache
+  , integralToMustache
+  , object
+  , (~>)
+  , (~=)
+    -- ** Utilities for lambdas
   , overText
-
   ) where
 
 
-
-import           Text.Mustache.Compile
-import           Text.Mustache.Render
-import           Text.Mustache.Types
 import qualified Data.Text as T
+import           Text.Mustache.Compile
+                   ( automaticCompile, compileTemplate, compileTemplateWithCache
+                   , localAutomaticCompile
+                   )
+import           Text.Mustache.Render
+                   ( catchSubstitute, checkedSubstitute, checkedSubstituteValue
+                   , substitute, substituteAST, substituteNode, substituteValue
+                   )
+import           Text.Mustache.Types
+                   ( Template (..), ToMustache (..), Value, (~>), (~=)
+                   , integralToMustache, object
+                   )
 
 
--- | Creates a 'Lambda' which first renders the contained section and then applies the supplied function
+-- | Creates a 'Lambda' which first renders the contained section and then
+-- applies the supplied function
 overText :: (T.Text -> T.Text) -> Value
 overText f = toMustache $ fmap (f . snd) . catchSubstitute . substituteAST

@@ -9,10 +9,13 @@ Portability : POSIX
 
 escapeXML and xmlEntities curtesy to the tagsoup library.
 -}
-module Text.Mustache.Internal (uncons, escapeXMLText) where
+module Text.Mustache.Internal
+  ( uncons
+  , escapeXMLText
+  ) where
 
 
-import           Data.Char   (ord)
+import           Data.Char ( ord )
 import qualified Data.IntMap as IntMap
 import qualified Data.Text   as T
 

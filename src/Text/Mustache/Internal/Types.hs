@@ -1,44 +1,85 @@
-{-# OPTIONS_GHC -fno-warn-orphans  #-}
-{-# LANGUAGE FlexibleContexts           #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE CPP                        #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TupleSections              #-}
-module Text.Mustache.Internal.Types where
+module Text.Mustache.Internal.Types
+  ( Array
+  , ASTree
+  , Context (..)
+  , DataIdentifier (..)
+  , Key
+  , Node (..)
+  , Object
+  , Pair
+  , STree
+  , SubM (..)
+  , SubstitutionError (..)
+  , Template (..)
+  , TemplateCache
+  , ToMustache (..)
+  , Value (..)
+  , innerSearch
+  , integralToMustache
+  , runSubM
+  , search
+  , shiftContext
+  , tellError
+  , tellSuccess
+  ) where
 
 
-import           Control.Arrow
-import           Control.Monad.RWS        hiding (lift)
-import qualified Data.Aeson               as Aeson
+import           Control.Arrow ( Arrow (..) )
+import           Control.Monad.RWS
+                   ( MonadReader (..), MonadWriter (..), RWS, RWST (..), asks
+                   , evalRWS
+                   )
+import qualified Data.Aeson as Aeson
 #if MIN_VERSION_aeson(2,0,0)
-import qualified Data.Aeson.KeyMap        as KM
+import qualified Data.Aeson.KeyMap as KM
 #endif
-import           Data.Int                 (Int8, Int16, Int32, Int64)
-import           Data.Foldable            (toList)
-import qualified Data.HashMap.Strict      as HM
-import qualified Data.HashSet             as HS
-import qualified Data.Map                 as Map
-import           Data.Scientific
-import qualified Data.Sequence            as Seq
-import qualified Data.Set                 as Set
-import           Data.Text
-import qualified Data.Text.Lazy           as LT
-import qualified Data.Vector              as V
-import           Data.Word                (Word8, Word16, Word32, Word64)
-import           Language.Haskell.TH.Lift (deriveLift)
-import           Numeric.Natural          (Natural)
+import           Data.Foldable ( toList )
+import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
+import           Data.Int ( Int8, Int16, Int32, Int64 )
+import qualified Data.Map as Map
+import           Data.Scientific ( Scientific, fromFloatDigits )
+import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
+import           Data.Text ( Text )
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Vector as V
+import           Data.Word ( Word8, Word16, Word32, Word64 )
+import           Language.Haskell.TH.Lift ( deriveLift )
+#if !MIN_VERSION_unordered_containers(0,2,17) || !MIN_VERSION_text(1,2,4)
+import           Language.Haskell.TH.Syntax ( Lift (..) )
+#endif
+import           Numeric.Natural ( Natural )
 
 
 -- | Type of errors we may encounter during substitution.
 data SubstitutionError
-  = VariableNotFound [Key] -- ^ The template contained a variable for which there was no data counterpart in the current context
-  | InvalidImplicitSectionContextType String -- ^ When substituting an implicit section the current context had an unsubstitutable type
-  | InvertedImplicitSection -- ^ Inverted implicit sections should never occur
-  | SectionTargetNotFound [Key] -- ^ The template contained a section for which there was no data counterpart in the current context
-  | PartialNotFound FilePath -- ^ The template contained a partial for which there was no data counterpart in the current context
-  | DirectlyRenderedValue Value -- ^ A complex value such as an Object or Array was directly rendered into the template (warning)
+  = VariableNotFound [Key]
+    -- ^ The template contained a variable for which there was no data
+    -- counterpart in the current context
+  | InvalidImplicitSectionContextType String
+    -- ^ When substituting an implicit section the current context had an
+    -- unsubstitutable type
+  | InvertedImplicitSection
+    -- ^ Inverted implicit sections should never occur
+  | SectionTargetNotFound [Key]
+    -- ^ The template contained a section for which there was no data
+    -- counterpart in the current context
+  | PartialNotFound FilePath
+    -- ^ The template contained a partial for which there was no data
+    -- counterpart in the current context
+  | DirectlyRenderedValue Value
+    -- ^ A complex value such as an Object or Array was directly rendered into
+    -- the template (warning)
   deriving (Show)
 
 
@@ -50,13 +91,19 @@ tellSuccess :: Text -> SubM ()
 tellSuccess s = SubM $ tell ([], [s])
 
 
-newtype SubM a = SubM { runSubM' :: RWS (Context Value, TemplateCache) ([SubstitutionError], [Text]) ()  a } deriving (Monad, Functor, Applicative, MonadReader (Context Value, TemplateCache))
+newtype SubM a = SubM
+  { runSubM' :: RWS (Context Value, TemplateCache) ([SubstitutionError], [Text]) () a
+  }
+  deriving (Monad, Functor, Applicative, MonadReader (Context Value, TemplateCache))
+
 
 runSubM :: SubM a -> Context Value -> TemplateCache -> ([SubstitutionError], [Text])
 runSubM comp ctx cache = snd $ evalRWS (runSubM' comp) (ctx, cache) ()
 
+
 shiftContext :: Context Value -> SubM a -> SubM a
 shiftContext = local . first . const
+
 
 -- | Search for a key in the current context.
 --
@@ -70,8 +117,8 @@ search (key:nextKeys) = (>>= innerSearch nextKeys) <$> go
     go = asks fst >>= \case
       Context parents focus -> do
         let searchParents = case parents of
-                  (newFocus: newParents) -> shiftContext (Context newParents newFocus) $ go
-                  _ -> return Nothing
+              (newFocus: newParents) -> shiftContext (Context newParents newFocus) go
+              _ -> return Nothing
         case focus of
           Object o ->
             case HM.lookup key o of
@@ -86,7 +133,6 @@ innerSearch :: [Key] -> Value -> Maybe Value
 innerSearch []     v          = Just v
 innerSearch (y:ys) (Object o) = HM.lookup y o >>= innerSearch ys
 innerSearch _      _          = Nothing
-
 
 
 -- | Syntax tree for a mustache template
@@ -126,6 +172,7 @@ type Pair   = (Text, Value)
 data Context α = Context { ctxtParents :: [α], ctxtFocus :: α }
   deriving (Eq, Show, Ord)
 
+
 -- | Internal value representation
 data Value
   = Object !Object
@@ -150,8 +197,10 @@ instance Show Value where
 listToMustache' :: ToMustache ω => [ω] -> Value
 listToMustache' = Array . V.fromList . fmap toMustache
 
+
 integralToMustache :: Integral ω => ω -> Value
 integralToMustache = toMustache . toInteger
+
 
 -- | Conversion class
 class ToMustache ω where
@@ -203,7 +252,7 @@ instance ToMustache Word64 where
 
 instance ToMustache Char where
   toMustache = toMustache . (:[])
-  listToMustache = String . pack
+  listToMustache = String . T.pack
 
 instance ToMustache Value where
   toMustache = id
@@ -243,7 +292,8 @@ instance (ToMustache ω) => ToMustache (Map.Map LT.Text ω) where
   toMustache = mapInstanceHelper LT.toStrict
 
 instance (ToMustache ω) => ToMustache (Map.Map String ω) where
-  toMustache = mapInstanceHelper pack
+  toMustache = mapInstanceHelper T.pack
+
 
 mapInstanceHelper :: ToMustache v => (a -> Text) -> Map.Map a v -> Value
 mapInstanceHelper conv =
@@ -252,6 +302,7 @@ mapInstanceHelper conv =
     (\k -> HM.insert (conv k) . toMustache)
     HM.empty
 
+
 instance ToMustache ω => ToMustache (HM.HashMap Text ω) where
   toMustache = Object . fmap toMustache
 
@@ -259,7 +310,8 @@ instance ToMustache ω => ToMustache (HM.HashMap LT.Text ω) where
   toMustache = hashMapInstanceHelper LT.toStrict
 
 instance ToMustache ω => ToMustache (HM.HashMap String ω) where
-  toMustache = hashMapInstanceHelper pack
+  toMustache = hashMapInstanceHelper T.pack
+
 
 hashMapInstanceHelper :: ToMustache v => (a -> Text) -> HM.HashMap a v -> Value
 hashMapInstanceHelper conv =
@@ -267,6 +319,7 @@ hashMapInstanceHelper conv =
   . HM.foldrWithKey
     (\k -> HM.insert (conv k) . toMustache)
     HM.empty
+
 
 instance ToMustache (STree -> SubM STree) where
     toMustache = Lambda
@@ -374,11 +427,14 @@ instance ( ToMustache α
     , toMustache h
     ]
 
+
 -- | A collection of templates with quick access via their hashed names
 type TemplateCache = HM.HashMap String Template
 
+
 -- | Type of key used for retrieving data from 'Value's
 type Key = Text
+
 
 {-|
   A compiled Template with metadata.
@@ -394,6 +450,7 @@ deriveLift ''DataIdentifier
 deriveLift ''Node
 deriveLift ''Template
 
+
 -- Data.HashMap 0.2.17.0 introduces its own Lift instance
 #if !MIN_VERSION_unordered_containers(0,2,17)
 instance Lift TemplateCache where
@@ -404,9 +461,9 @@ instance Lift TemplateCache where
 #endif
 #endif
 
+
 --Data.Text 1.2.4.0 introduces its own Lift Text instance
 #if !MIN_VERSION_text(1,2,4)
 instance Lift Text where
-  lift = lift . unpack
+  lift = lift . T.unpack
 #endif
-

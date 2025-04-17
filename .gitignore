@@ -1,20 +1,6 @@
-dist
-cabal-dev
-*.o
-*.hi
-*.chi
-*.chs.h
-*.dyn_o
-*.dyn_hi
-.virtualenv
-.hpc
-.hsenv
-.cabal-sandbox/
-cabal.sandbox.config
-*.prof
-*.aux
-*.hp
-.DS_Store
-.stack-work/
-mustache.cabal
-/stack.yaml.lock
+# Cabal-related
+/dist-newstyle/
+
+# The Haskell Tool Stack-related
+/.stack-work/
+*.yaml.lock

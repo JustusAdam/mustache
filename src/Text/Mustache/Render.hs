@@ -7,44 +7,56 @@ Maintainer  : dev@justus.science
 Stability   : experimental
 Portability : POSIX
 -}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE TypeSynonymInstances       #-}
-{-# OPTIONS_GHC -fno-warn-orphans  #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE CPP                  #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 module Text.Mustache.Render
   (
-  -- * Substitution
-    substitute, substituteValue
-  -- * Checked substitution
-  , checkedSubstitute, checkedSubstituteValue, SubstitutionError(..)
-  -- * Working with Context
-  , Context(..), search, innerSearch, SubM, substituteNode, substituteAST, catchSubstitute
-  -- * Util
+    -- * Substitution
+    substitute
+  , substituteValue
+    -- * Checked substitution
+  , checkedSubstitute
+  , checkedSubstituteValue
+  , SubstitutionError (..)
+    -- * Working with Context
+  , Context (..)
+  , search
+  , innerSearch
+  , SubM
+  , substituteNode
+  , substituteAST
+  , catchSubstitute
+    -- * Util
   , toString
   ) where
 
 
-import           Control.Arrow                (first, second)
-import           Control.Monad
-
-import           Data.Foldable                (for_)
-import           Data.HashMap.Strict          as HM hiding (keys, map)
-import           Data.Maybe                   (fromMaybe)
-
-import           Data.Scientific              (floatingOrInteger)
-import           Data.Text                    as T (Text, isSuffixOf, pack,
-                                                    replace, stripSuffix)
-import qualified Data.Vector                  as V
-import           Prelude                      hiding (length, lines, unlines)
-
-import           Control.Monad.Reader
-import           Control.Monad.Writer
-import qualified Data.Text                    as T
-import qualified Data.Text.Lazy               as LT
-import           Text.Mustache.Internal
+import           Control.Arrow ( first, second )
+import           Control.Monad ( (>=>) )
+import           Control.Monad.Reader ( MonadReader (..), asks )
+import           Control.Monad.Writer ( MonadWriter (..), censor )
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Monoid ( (<>) )
+#endif
+import           Data.Foldable ( for_ )
+import qualified Data.HashMap.Strict as HM
+import           Data.Maybe ( fromMaybe )
+import           Data.Scientific ( floatingOrInteger )
+import           Data.Text ( Text )
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Vector as V
+import           Text.Mustache.Internal ( escapeXMLText, uncons )
 import           Text.Mustache.Internal.Types
+                   ( SubM (..), SubstitutionError (..), innerSearch, runSubM
+                   , search, shiftContext, tellError, tellSuccess
+                   )
 import           Text.Mustache.Types
+                   ( Context (..), DataIdentifier (..), Node (..), STree
+                   , Template (..), ToMustache (..), Value (..), askContext
+                   )
 
 
 {-|
@@ -99,13 +111,19 @@ substituteValue = (snd .) . checkedSubstituteValue
 -}
 checkedSubstituteValue :: Template -> Value -> ([SubstitutionError], Text)
 checkedSubstituteValue template dataStruct =
-  second T.concat $ runSubM (substituteAST (ast template)) (Context mempty dataStruct) (partials template)
+  second T.concat $ runSubM
+    (substituteAST (ast template))
+    (Context mempty dataStruct)
+    (partials template)
+
 
 -- | Catch the results of running the inner substitution.
 catchSubstitute :: SubM a -> SubM (a, Text)
-catchSubstitute = fmap (second (T.concat . snd)) . SubM . hideResults . listen . runSubM'
+catchSubstitute =
+  fmap (second (T.concat . snd)) . SubM . hideResults . listen . runSubM'
   where
     hideResults = censor (\(errs, _) -> (errs, []))
+
 
 -- | Substitute an entire 'STree' rather than just a single 'Node'
 substituteAST :: STree -> SubM ()
@@ -204,38 +222,41 @@ handleIndent :: Maybe Text -> STree -> STree
 handleIndent Nothing ast' = ast'
 handleIndent (Just indentation) ast' = preface <> content
   where
-    preface = if T.null indentation then [] else [TextBlock indentation]
+    preface = [TextBlock indentation | not (T.null indentation)]
     content = if T.null indentation
       then ast'
-      else reverse $ fromMaybe [] (uncurry (:) . first dropper <$> uncons (reverse fullIndented))
+      else reverse $ maybe [] (uncurry (:) . first dropper) (uncons (reverse fullIndented))
       where
         fullIndented = fmap (indentBy indentation) ast'
         dropper (TextBlock t) = TextBlock $
-          if ("\n" <> indentation) `isSuffixOf` t
-            then fromMaybe t $ stripSuffix indentation t
+          if ("\n" <> indentation) `T.isSuffixOf` t
+            then fromMaybe t $ T.stripSuffix indentation t
             else t
         dropper a = a
+
 
 indentBy :: Text -> Node Text -> Node Text
 indentBy indent p@(Partial (Just indent') name')
   | T.null indent = p
   | otherwise = Partial (Just (indent <> indent')) name'
 indentBy indent (Partial Nothing name') = Partial (Just indent) name'
-indentBy indent (TextBlock t) = TextBlock $ replace "\n" ("\n" <> indent) t
+indentBy indent (TextBlock t) = TextBlock $ T.replace "\n" ("\n" <> indent) t
 indentBy _ a = a
-
 
 
 -- | Converts values to Text as required by the mustache standard
 toString :: Value -> SubM Text
 toString (String t) = return t
-toString (Number n) = return $ either (pack . show) (pack . show) (floatingOrInteger n :: Either Double Integer)
+toString (Number n) = return $ either
+  (T.pack . show)
+  (T.pack . show)
+  (floatingOrInteger n :: Either Double Integer)
 toString (Lambda l) = do
   ((), res) <- catchSubstitute $ substituteAST =<< l []
   return res
 toString e          = do
   tellError $ DirectlyRenderedValue e
-  return $ pack $ show e
+  return $ T.pack $ show e
 
 
 instance ToMustache (Context Value -> STree -> STree) where
@@ -248,7 +269,7 @@ instance ToMustache (Context Value -> STree -> LT.Text) where
   toMustache = lambdaHelper LT.toStrict
 
 instance ToMustache (Context Value -> STree -> String) where
-  toMustache = lambdaHelper pack
+  toMustache = lambdaHelper T.pack
 
 lambdaHelper :: (r -> Text) -> (Context Value -> STree -> r) -> Value
 lambdaHelper conv f = Lambda $ (<$> askContext) . wrapper

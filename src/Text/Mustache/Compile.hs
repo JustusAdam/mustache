@@ -8,34 +8,47 @@ Stability   : experimental
 Portability : POSIX
 -}
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
-{-# LANGUAGE QuasiQuotes     #-}
-{-# LANGUAGE TemplateHaskell #-}
 module Text.Mustache.Compile
-  ( automaticCompile, localAutomaticCompile, TemplateCache, compileTemplateWithCache
-  , compileTemplate, cacheFromList, getPartials, mustache, embedTemplate, embedSingleTemplate
+  ( automaticCompile
+  , localAutomaticCompile
+  , TemplateCache
+  , compileTemplateWithCache
+  , compileTemplate
+  , cacheFromList
+  , getPartials
+  , mustache
+  , embedTemplate
+  , embedSingleTemplate
   ) where
 
 
-import           Control.Arrow              ((&&&))
-import           Control.Monad
+import           Control.Arrow ( (&&&) )
+import           Control.Monad ( (<=<), filterM, foldM )
 import           Control.Monad.Except
+                   ( ExceptT (..), MonadError (..), runExceptT )
 import           Control.Monad.State
-import           Data.Bool
-import           Data.HashMap.Strict        as HM
-import           Data.Text                  hiding (concat, find, map, uncons)
-import qualified Data.Text.IO               as TIO
-import           Language.Haskell.TH        (Exp, Loc, Q, loc_filename,
-                                             loc_start, location)
-import           Language.Haskell.TH.Quote  (QuasiQuoter (QuasiQuoter),
-                                             quoteExp)
+                   ( MonadState (..), MonadTrans (..), StateT, evalStateT
+                   , modify
+                   )
+import           Data.Bool ( bool )
+import qualified Data.HashMap.Strict as HM
+import           Data.Text ( Text )
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import           Language.Haskell.TH
+                   ( Exp, Loc, Q, loc_filename, loc_start, location )
+import           Language.Haskell.TH.Quote
+                   ( QuasiQuoter (..), quoteExp )
 import qualified Language.Haskell.TH.Syntax as THS
-import           System.Directory
-import           System.FilePath
-import           Text.Mustache.Parser
+import           System.Directory ( doesFileExist, makeAbsolute )
+import           System.FilePath ( (</>) )
+import           Text.Mustache.Parser ( parse )
 import           Text.Mustache.Types
-import           Text.Parsec.Error
-import           Text.Parsec.Pos
-import           Text.Printf
+                   ( STree, Template (..), TemplateCache, Node (..) )
+import           Text.Parsec.Error ( Message (..), ParseError, newErrorMessage )
+import           Text.Parsec.Pos ( initialPos )
+import           Text.Printf ( printf )
+
 
 {-|
   Compiles a mustache template provided by name including the mentioned partials.
@@ -94,7 +107,7 @@ compileTemplateWithCache searchSpace templates initName =
 
 -- | Flatten a list of Templates into a single 'TemplateCache'
 cacheFromList :: [Template] -> TemplateCache
-cacheFromList = flattenPartials . fromList . fmap (name &&& id)
+cacheFromList = flattenPartials . HM.fromList . fmap (name &&& id)
 
 
 -- | Compiles a 'Template' directly from 'Text' without checking for missing partials.
@@ -109,7 +122,7 @@ compileTemplate name' = fmap (flip (Template name') mempty) . parse name'
   Same as @join . fmap getPartials'@
 -}
 getPartials :: STree -> [FilePath]
-getPartials = join . fmap getPartials'
+getPartials = (getPartials' =<<)
 
 
 {-|
@@ -124,7 +137,7 @@ getPartials' _                     = mempty
 
 
 flattenPartials :: TemplateCache -> TemplateCache
-flattenPartials m = foldrWithKey (insertWith (\_ b -> b)) m m
+flattenPartials m = HM.foldrWithKey (HM.insertWith (\_ b -> b)) m m
 
 
 {-|
@@ -156,14 +169,15 @@ getFile (templateDir : xs) fp =
 -- > foo = [mustache|This is my inline {{ template }} created at compile time|]
 --
 -- Partials are not supported in the QuasiQuoter
-
 mustache :: QuasiQuoter
 mustache = QuasiQuoter {quoteExp = \unprocessedTemplate -> do
   l <- location
   compileTemplateTH (fileAndLine l) unprocessedTemplate }
 
+
 -- |
--- Compile a mustache 'Template' at compile time providing a search space for any partials. Usage:
+-- Compile a mustache 'Template' at compile time providing a search space for
+-- any partials. Usage:
 --
 -- > {-# LANGUAGE TemplateHaskell #-}
 -- > import Text.Mustache.Compile (embedTemplate)
@@ -171,7 +185,6 @@ mustache = QuasiQuoter {quoteExp = \unprocessedTemplate -> do
 -- > foo :: Template
 -- > foo = $(embedTemplate ["dir", "dir/partials"] "file.mustache")
 --
-
 embedTemplate :: [FilePath] -> FilePath -> Q Exp
 embedTemplate searchSpace filename = do
   template <- either (fail . ("Parse error in mustache template: " ++) . show) pure =<< THS.runIO (automaticCompile searchSpace filename)
@@ -181,6 +194,7 @@ embedTemplate searchSpace filename = do
         pure $ path </> fname
   mapM_ addDependentRelativeFile =<< THS.runIO (filterM doesFileExist possiblePaths)
   THS.lift template
+
 
 -- |
 -- Compile a mustache 'Template' at compile time. Usage:
@@ -192,23 +206,30 @@ embedTemplate searchSpace filename = do
 -- > foo = $(embedSingleTemplate "dir/file.mustache")
 --
 -- Partials are not supported in embedSingleTemplate
-
 embedSingleTemplate :: FilePath -> Q Exp
 embedSingleTemplate filePath = do
   addDependentRelativeFile filePath
   compileTemplateTH filePath =<< THS.runIO (readFile filePath)
 
+
 fileAndLine :: Loc -> String
 fileAndLine loc = loc_filename loc ++ ":" ++ (show . fst . loc_start $ loc)
 
+
 compileTemplateTH :: String -> String -> Q Exp
 compileTemplateTH filename unprocessed =
-  either (fail . ("Parse error in mustache template: " ++) . show) THS.lift $ compileTemplate filename (pack unprocessed)
+  either
+    (fail . ("Parse error in mustache template: " ++) . show)
+    THS.lift
+    (compileTemplate filename (T.pack unprocessed))
+
 
 addDependentRelativeFile :: FilePath -> Q ()
 addDependentRelativeFile = THS.qAddDependentFile <=< THS.runIO . makeAbsolute
 
--- ERRORS
 
+-- ERRORS
 fileNotFound :: FilePath -> ParseError
-fileNotFound fp = newErrorMessage (Message $ printf "Template file '%s' not found" fp) (initialPos fp)
+fileNotFound fp = newErrorMessage
+  (Message $ printf "Template file '%s' not found" fp)
+  (initialPos fp)
