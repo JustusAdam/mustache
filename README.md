@@ -1,4 +1,8 @@
-# mustache [![Travis Status](https://travis-ci.org/JustusAdam/mustache.svg?branch=master)](https://travis-ci.org/JustusAdam/mustache) [![Hackage](https://img.shields.io/hackage/v/mustache.svg)](https://hackage.haskell.org/package/mustache) [![Join the chat at https://gitter.im/JustusAdam/mustache](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/JustusAdam/mustache?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+# mustache
+
+![Build Status](https://github.com/JustusAdam/mustache/actions/workflows/build.yml/badge.svg)
+[![Hackage](https://img.shields.io/hackage/v/mustache.svg)](https://hackage.haskell.org/package/mustache)
+[![Join the chat at https://gitter.im/JustusAdam/mustache](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/JustusAdam/mustache?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Haskell implementation of [mustache templates][mustache-homepage].
 
