@@ -228,7 +228,7 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
                     , lambdaContextAndTreeToText = Implemented $ \_ _ -> "world"
                     , lambdaContextAndTreeToString = Implemented $ \_ _ -> "world"
                     , lambdaTreeToTextM = Implemented $ \_ -> return "world"
-                    , lambdaTextToText = Implemented $ \_ -> "world"
+                    , lambdaTextToText = Implemented $ const "world"
                     }
                 ]
             , template = "Hello, {{lambda}}!"
@@ -303,7 +303,7 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
                     , lambdaContextAndTreeToText = Implemented $ \_ _ -> ">"
                     , lambdaContextAndTreeToString = Implemented $ \_ _ -> ">"
                     , lambdaTreeToTextM = Implemented $ \_ -> return ">"
-                    , lambdaTextToText = Implemented $ \_ -> ">"
+                    , lambdaTextToText = Implemented $ const ">"
                     }
                 ]
             , template = "<{{lambda}}{{{lambda}}}"
@@ -399,7 +399,7 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
                     , lambdaContextAndTreeToText = Implemented $ \_ _ -> mempty
                     , lambdaContextAndTreeToString = Implemented $ \_ _ -> mempty
                     , lambdaTreeToTextM = Implemented $ \_ -> return mempty
-                    , lambdaTextToText = Implemented $ \_ -> mempty
+                    , lambdaTextToText = Implemented $ const mempty
                     }
                 ]
             , template = "<{{^lambda}}{{static}}{{/lambda}}>"
