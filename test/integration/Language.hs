@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP               #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -19,6 +20,9 @@ import           Data.Foldable ( for_ )
 import qualified Data.HashMap.Strict as HM
 import           Data.List ( isPrefixOf )
 import           Data.Maybe ( fromMaybe, mapMaybe )
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Monoid ( (<>) )
+#endif
 import           Data.Text ( Text )
 import qualified Data.Text as T
 import           Data.Yaml
