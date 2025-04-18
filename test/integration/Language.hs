@@ -9,6 +9,7 @@ module Main
 import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Compression.GZip as GZip
 import           Control.Applicative ( (<$>), (<*>) )
+import           Control.Exception ( Exception (..) )
 import           Control.Lens ( (^.) )
 import           Control.Monad ( mzero, void )
 import           Data.ByteString.Lazy ( toStrict )
@@ -18,7 +19,8 @@ import           Data.List ( isPrefixOf )
 import           Data.Maybe ( fromMaybe )
 import qualified Data.Text as T
 import           Data.Yaml
-                   ( FromJSON, Value (..), (.!=), (.:), (.:?), decode, parseJSON
+                   ( FromJSON, Value (..), (.!=), (.:), (.:?), decodeEither'
+                   , parseJSON
                    )
 import           Network.Wreq ( get, responseBody )
 import           System.FilePath ( takeExtension, takeFileName )
@@ -80,7 +82,15 @@ getOfficialSpecRelease releaseURL  = do
         Tar.NormalFile f _
           | takeExtension filename `elem` [".yml", ".yaml"]
               && not ("~" `isPrefixOf` takeFileName filename) ->
-                (filename, fromMaybe (error $ "Error parsing spec file " ++ filename) $ decode $ toStrict f):acc
+                ( filename
+                , case decodeEither' $ toStrict f of
+                    Left e -> error $
+                         "Error parsing spec file "
+                      ++ filename
+                      ++ ": "
+                      ++ displayException e
+                    Right spec -> spec
+                ) : acc
         _ -> acc
       where
         filename = Tar.entryPath e
