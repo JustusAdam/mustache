@@ -4,20 +4,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Main where
+module Main
+ ( main
+ ) where
 
 
-import           Control.Applicative   ((<$>), (<*>))
-import           Data.Either
-import           Data.Function         (on)
-import           Data.Monoid
-import qualified Data.Text             as T
-import           System.IO.Unsafe      (unsafePerformIO)
+import           Control.Applicative ( (<$>), (<*>) )
+import           Data.Either ( isLeft )
+import           Data.Function ( on )
+import qualified Data.Text as T
+import           System.IO.Unsafe ( unsafePerformIO )
 import           Test.Hspec
+                   ( Spec, describe, hspec, it, shouldBe, shouldSatisfy )
 import           Text.Mustache
+                   ( Template (..), ToMustache (..), (~>), automaticCompile
+                   , compileTemplate, object, overText, substitute
+                   )
 import           Text.Mustache.Compile
-import           Text.Mustache.Parser
+                   ( embedTemplate, embedSingleTemplate, mustache )
+import           Text.Mustache.Parser ( parse )
 import           Text.Mustache.Types
+                   ( DataIdentifier (..), Node (..), Value (..) )
 
 
 escaped :: Bool
