@@ -69,7 +69,7 @@ getOfficialSpecRelease :: String -> IO [(String, LangSpecFile)]
 getOfficialSpecRelease releaseURL  = do
     res <- get releaseURL
     let archive = Tar.read $ GZip.decompress (res ^. responseBody)
-    return $ Tar.foldEntries handleEntry [] (error . show) archive
+    pure $ Tar.foldEntries handleEntry [] (error . show) archive
   where
     handleEntry e acc =
       case content of
@@ -93,7 +93,7 @@ testOfficialLangSpec testfiles =
             compiled = do
               partials' <- HM.traverseWithKey compileTemplate testPartials
               template' <- compileTemplate name template
-              return $ template' { partials = partials' }
+              pure $ template' { partials = partials' }
           in
             case compiled of
               Left m -> expectationFailure $ show m

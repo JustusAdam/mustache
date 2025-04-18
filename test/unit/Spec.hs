@@ -30,7 +30,7 @@ parserSpec :: Spec
 parserSpec =
   describe "mustacheParser" $ do
     let lparse = parse "testsuite"
-    let returnedOne = return . return
+    let returnedOne = pure . pure
 
     let text = "test12356p0--=-34{}jnv,\n"
 
@@ -83,19 +83,19 @@ parserSpec =
 
     it "parses a delimiter change" $
       lparse "{{=<< >>=}}<<var>>{{var}}" `shouldBe`
-        return [Variable True (NamedData ["var"]), TextBlock "{{var}}"]
+        pure [Variable True (NamedData ["var"]), TextBlock "{{var}}"]
 
     it "parses a delimiter change with whitespace" $
       lparse "{{=<<   >>=}}<< var   >>{{var}}" `shouldBe`
-        return [Variable True (NamedData ["var"]), TextBlock "{{var}}"]
+        pure [Variable True (NamedData ["var"]), TextBlock "{{var}}"]
 
     it "parses two subsequent delimiter changes" $
       lparse "{{=((  ))=}}(( var ))((=--  $-=))--#section$---/section$-" `shouldBe`
-        return [Variable True (NamedData ["var"]), Section (NamedData ["section"]) []]
+        pure [Variable True (NamedData ["var"]), Section (NamedData ["section"]) []]
 
     it "propagates a delimiter change from a nested scope" $
       lparse "{{#section}}{{=<< >>=}}<</section>><<var>>" `shouldBe`
-        return [Section (NamedData ["section"]) [], Variable escaped (NamedData ["var"])]
+        pure [Section (NamedData ["section"]) [], Variable escaped (NamedData ["var"])]
 
     it "fails if the tag contains illegal characters" $
       lparse "{{#&}}" `shouldSatisfy` isLeft
@@ -208,7 +208,7 @@ substituteSpec =
     it "substitutes a lambda used directly as if applied to empty block" $
       substitute
         (toTemplate [Variable escaped (NamedData ["lambda"])])
-        (object ["lambda" ~> Lambda (\[] -> return [TextBlock "T"])])
+        (object ["lambda" ~> Lambda (\[] -> pure [TextBlock "T"])])
       `shouldBe` "T"
 
     it "substitutes a nested section" $

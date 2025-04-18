@@ -111,18 +111,18 @@ shiftContext = local . first . const
 -- is searched first. If the key is not found the outer scopes are recursively
 -- searched until the key is found, then 'innerSearch' is called on the result.
 search :: [Key] -> SubM (Maybe Value)
-search [] = return Nothing
+search [] = pure Nothing
 search (key:nextKeys) = (>>= innerSearch nextKeys) <$> go
   where
     go = asks fst >>= \case
       Context parents focus -> do
         let searchParents = case parents of
               (newFocus: newParents) -> shiftContext (Context newParents newFocus) go
-              _ -> return Nothing
+              _ -> pure Nothing
         case focus of
           Object o ->
             case HM.lookup key o of
-              Just res -> return $ Just res
+              Just res -> pure $ Just res
               _ -> searchParents
           _ -> searchParents
 

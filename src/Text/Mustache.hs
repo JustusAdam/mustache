@@ -26,7 +26,7 @@ main = do
   compiled <- automaticCompile searchSpace templateName
   case compiled of
     Left err -> print err
-    Right template -> return () -- this is where you can start using it
+    Right template -> pure () -- this is where you can start using it
 @
 
 The @searchSpace@ encompasses all directories in which the compiler should

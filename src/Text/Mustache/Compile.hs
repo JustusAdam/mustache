@@ -89,7 +89,7 @@ compileTemplateWithCache searchSpace templates initName =
     compile' name' = do
       templates' <- get
       case HM.lookup name' templates' of
-        Just template -> return template
+        Just template -> pure template
         Nothing -> do
           rawSource <- lift $ getFile searchSpace name'
           compiled@(Template { ast = mSTree }) <-
@@ -99,7 +99,7 @@ compileTemplateWithCache searchSpace templates initName =
             (\st@(Template { partials = p }) partialName -> do
               nt <- compile' partialName
               modify (HM.insert partialName nt)
-              return (st { partials = HM.insert partialName nt p })
+              pure (st { partials = HM.insert partialName nt p })
             )
             compiled
             (getPartials mSTree)
@@ -129,7 +129,7 @@ getPartials = (getPartials' =<<)
   Find partials in a single Node
 -}
 getPartials' :: Node Text -> [FilePath]
-getPartials' (Partial _ p) = return p
+getPartials' (Partial _ p) = pure p
 getPartials' (Section _ n) = getPartials n
 getPartials' (InvertedSection _ n) = getPartials n
 getPartials' _                     = mempty

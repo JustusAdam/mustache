@@ -140,7 +140,7 @@ substituteNode (TextBlock t) = tellSuccess t
 substituteNode (Section Implicit secSTree) =
   asks fst >>= \case
     Context parents focus@(Array a)
-      | V.null a  -> return ()
+      | V.null a  -> pure ()
       | otherwise -> for_ a $ \focus' ->
         let newContext = Context (focus:parents) focus'
         in shiftContext newContext $ substituteAST secSTree
@@ -151,14 +151,14 @@ substituteNode (Section (NamedData secName) secSTree) =
   search secName >>= \case
     Just arr@(Array arrCont) ->
       if V.null arrCont
-        then return ()
+        then pure ()
         else do
           Context parents focus <- asks fst
           for_ arrCont $ \focus' ->
             let newContext = Context (arr:focus:parents) focus'
             in shiftContext newContext $ substituteAST secSTree
-    Just (Bool False) -> return ()
-    Just Null         -> return ()
+    Just (Bool False) -> pure ()
+    Just Null         -> pure ()
     Just (Lambda l)   -> substituteAST =<< l secSTree
     Just focus'       -> do
       Context parents focus <- asks fst
@@ -174,7 +174,7 @@ substituteNode (InvertedSection (NamedData secName) invSecSTree) =
     Just (Array a)    | V.null a -> contents
     Just Null         -> contents
     Nothing           -> contents
-    _                 -> return ()
+    _                 -> pure ()
   where
     contents = mapM_ substituteNode invSecSTree
 
@@ -234,17 +234,17 @@ indentBy _ a = a
 
 -- | Converts values to Text as required by the mustache standard
 toString :: Value -> SubM Text
-toString (String t) = return t
-toString (Number n) = return $ either
+toString (String t) = pure t
+toString (Number n) = pure $ either
   (T.pack . show)
   (T.pack . show)
   (floatingOrInteger n :: Either Double Integer)
 toString (Lambda l) = do
   ((), res) <- catchSubstitute $ substituteAST =<< l []
-  return res
+  pure res
 toString e          = do
   tellError $ DirectlyRenderedValue e
-  return $ T.pack $ show e
+  pure $ T.pack $ show e
 
 
 instance ToMustache (Context Value -> STree -> STree) where
@@ -266,4 +266,4 @@ lambdaHelper conv f = Lambda $ (<$> askContext) . wrapper
     wrapper lSTree c = [TextBlock $ conv $ f c lSTree]
 
 instance ToMustache (STree -> SubM Text) where
-  toMustache f = Lambda (fmap (return . TextBlock) . f)
+  toMustache f = Lambda (fmap (pure . TextBlock) . f)
