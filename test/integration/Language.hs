@@ -2,27 +2,31 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE UnicodeSyntax     #-}
-module Main where
+module Main
+  ( main
+  ) where
 
-import qualified Codec.Archive.Tar      as Tar
+import qualified Codec.Archive.Tar as Tar
 import qualified Codec.Compression.GZip as GZip
-import           Control.Applicative    ((<$>), (<*>))
-import           Control.Lens
-import           Control.Monad
-import           Data.ByteString.Lazy   (toStrict)
-import           Data.Foldable          (for_)
-import qualified Data.HashMap.Strict    as HM (HashMap, empty,
-                                               traverseWithKey)
-import           Data.List
-import           Data.Maybe             (fromMaybe)
-import qualified Data.Text              as T
-import           Data.Yaml              as Y (FromJSON, Value (..), decode,
-                                              parseJSON, (.!=), (.:), (.:?))
-import           Network.Wreq
-import           System.FilePath
+import           Control.Applicative ( (<$>), (<*>) )
+import           Control.Lens ( (^.) )
+import           Control.Monad ( mzero, void )
+import           Data.ByteString.Lazy ( toStrict )
+import           Data.Foldable ( for_ )
+import qualified Data.HashMap.Strict as HM
+import           Data.List ( isPrefixOf )
+import           Data.Maybe ( fromMaybe )
+import qualified Data.Text as T
+import           Data.Yaml
+                   ( FromJSON, Value (..), (.!=), (.:), (.:?), decode, parseJSON
+                   )
+import           Network.Wreq ( get, responseBody )
+import           System.FilePath ( takeExtension, takeFileName )
 import           Test.Hspec
+                   ( Spec, describe, expectationFailure, hspec, shouldBe, it )
 import           Text.Mustache
-
+                   ( Template (..), compileTemplate, substituteValue, toMustache
+                   )
 
 langspecs :: [String]
 langspecs =
@@ -40,7 +44,7 @@ data LangSpecFile = LangSpecFile
 data LangSpecTest = LangSpecTest
   { name            :: String
   , specDescription :: String
-  , specData        :: Y.Value
+  , specData        :: Value
   , template        :: T.Text
   , expected        :: T.Text
   , testPartials    :: HM.HashMap String T.Text
@@ -48,14 +52,14 @@ data LangSpecTest = LangSpecTest
 
 
 instance FromJSON LangSpecFile where
-  parseJSON (Y.Object o) = LangSpecFile
+  parseJSON (Object o) = LangSpecFile
     <$> o .: "overview"
     <*> o .: "tests"
   parseJSON _ = mzero
 
 
 instance FromJSON LangSpecTest where
-  parseJSON (Y.Object o) = LangSpecTest
+  parseJSON (Object o) = LangSpecTest
     <$> o .: "name"
     <*> o .: "desc"
     <*> o .: "data"
