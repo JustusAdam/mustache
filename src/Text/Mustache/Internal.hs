@@ -22,7 +22,7 @@ import qualified Data.Text   as T
 
 uncons :: [α] -> Maybe (α, [α])
 uncons []     = Nothing
-uncons (x:xs) = return (x, xs)
+uncons (x:xs) = pure (x, xs)
 
 
 escapeXMLText :: T.Text -> T.Text

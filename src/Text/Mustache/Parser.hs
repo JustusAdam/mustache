@@ -166,7 +166,7 @@ endOfLine :: Parser String
 endOfLine = do
   r <- optionMaybe $ char '\r'
   n <- char '\n'
-  return $ maybe id (:) r [n]
+  pure $ maybe id (:) r [n]
 
 
 {-|
@@ -210,7 +210,7 @@ flushText :: Parser STree
 flushText = do
   s@(MustacheState { textStack = text }) <- getState
   putState $ s { textStack = mempty }
-  return [TextBlock text | not (T.null text)]
+  pure [TextBlock text | not (T.null text)]
 
 
 finishFile :: Parser STree
@@ -254,7 +254,7 @@ continueFromTag (SectionBegin inverted name) = do
   textNodes <- flushText
   state@(MustacheState
     { currentSectionName = previousSection }) <- getState
-  putState $ state { currentSectionName = return name }
+  putState $ state { currentSectionName = pure name }
   innerSectionContent <- parseText
   let sectionTag =
         if inverted
@@ -262,7 +262,7 @@ continueFromTag (SectionBegin inverted name) = do
           else Section
   modifyState $ \s -> s { currentSectionName = previousSection }
   outerSectionContent <- parseText
-  return (textNodes <> [sectionTag name innerSectionContent] <> outerSectionContent)
+  pure (textNodes <> [sectionTag name innerSectionContent] <> outerSectionContent)
 continueFromTag (SectionEnd name) = do
   (MustacheState
     { currentSectionName }) <- getState
@@ -281,7 +281,7 @@ continueFromTag (SectionEnd name) = do
 continueFromTag (Tag tag) = do
   textNodes    <- flushText
   furtherNodes <- parseText
-  return $ textNodes <> return tag <> furtherNodes
+  pure $ textNodes <> pure tag <> furtherNodes
 continueFromTag HandledTag = parseText
 
 
@@ -296,20 +296,20 @@ switchOnTag = do
     , Tag . Variable False
         <$> (try (char unescape1) >> genParseTagEnd mempty)
     , Tag . Variable False
-        <$> (try (char (fst unescape2)) >> genParseTagEnd (return $ snd unescape2))
+        <$> (try (char (fst unescape2)) >> genParseTagEnd (pure $ snd unescape2))
     , Tag . Partial Nothing
         <$> (  try (char partialBegin)
             >> spaces
             >> (noneOf (nub end) `manyTill` try (spaces >> string end))
             )
-    , return HandledTag
+    , pure HandledTag
         << (try (char delimiterChange) >> parseDelimChange)
     , SectionBegin True
         <$> (try (char invertedSectionBegin) >> genParseTagEnd mempty >>= \case
-              n@(NamedData _) -> return n
+              n@(NamedData _) -> pure n
               _ -> parserFail "Inverted Sections can not be implicit."
             )
-    , return HandledTag << (try (char comment) >> manyTill anyChar (try $ string end))
+    , pure HandledTag << (try (char comment) >> manyTill anyChar (try $ string end))
     , Tag . Variable True
         <$> genParseTagEnd mempty
     ]
@@ -343,7 +343,7 @@ genParseTagEnd emod = do
 
         others <- (char nestingSeparator >> parseOne)
                   <|> (mempty <$ (spaces >> string nEnd))
-        return $ T.pack one : others
+        pure $ T.pack one : others
   spaces
-  (try (char implicitIterator) >> spaces >> string nEnd >> return Implicit)
+  (try (char implicitIterator) >> spaces >> string nEnd >> pure Implicit)
     <|> (NamedData <$> parseOne)
