@@ -201,8 +201,8 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
       Object o <- pure $ specData test
       Object lambdaImplementations <- HM.lookup "lambda" o
       HM.lookup key lambdaImplementations >>= \case
-        v@(Lambda lambdaFunc) -> return $ RunSpec $ test { specData = Object $ HM.insert "lambda" v o }
-        Null -> return $ SkipSpec test
+        v@(Lambda lambdaFunc) -> pure $ RunSpec $ test { specData = Object $ HM.insert "lambda" v o }
+        Null -> pure $ SkipSpec test
         _ -> mzero
 
     lambdaSpecFile = LangSpecFile
@@ -227,11 +227,11 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
             , specData = object
                 -- "lambda": (_) => "world"
                 [ "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Implemented $ \_ -> return [TextBlock "world"]
+                    { lambdaTreeToTreeM = Implemented $ \_ -> pure [TextBlock "world"]
                     , lambdaContextAndTreeToTree = Implemented $ \_ _ -> [TextBlock "world"]
                     , lambdaContextAndTreeToText = Implemented $ \_ _ -> "world"
                     , lambdaContextAndTreeToString = Implemented $ \_ _ -> "world"
-                    , lambdaTreeToTextM = Implemented $ \_ -> return "world"
+                    , lambdaTreeToTextM = Implemented $ \_ -> pure "world"
                     , lambdaTextToText = Implemented $ const "world"
                     }
                 ]
@@ -281,7 +281,7 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
             { name = "Interpolation - Multiple Calls"
             , specDescription = "Interpolated lambdas should not be cached."
             , specData = object
-                -- "lambda": (_) => { mutateGlobalState(); return someValue }
+                -- "lambda": (_) => { mutateGlobalState(); pure someValue }
                 [ "planet" ~> T.pack "world"
                 , "lambda" ~> LambdaImplementations
                     { lambdaTreeToTreeM = Unimplemented
@@ -302,11 +302,11 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
             , specData = object
                 -- "lambda": (_) => ">"
                 [ "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Implemented $ \_ -> return [TextBlock ">"]
+                    { lambdaTreeToTreeM = Implemented $ \_ -> pure [TextBlock ">"]
                     , lambdaContextAndTreeToTree = Implemented $ \_ _ -> [TextBlock ">"]
                     , lambdaContextAndTreeToText = Implemented $ \_ _ -> ">"
                     , lambdaContextAndTreeToString = Implemented $ \_ _ -> ">"
-                    , lambdaTreeToTextM = Implemented $ \_ -> return ">"
+                    , lambdaTreeToTextM = Implemented $ \_ -> pure ">"
                     , lambdaTextToText = Implemented $ const ">"
                     }
                 ]
@@ -377,13 +377,13 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
             , specData = object
                 -- "lambda": (t) => "__" + t + "__"
                 [ "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Implemented $ \tree -> return $ [TextBlock "__"] <> tree <> [TextBlock "__"]
+                    { lambdaTreeToTreeM = Implemented $ \tree -> pure $ [TextBlock "__"] <> tree <> [TextBlock "__"]
                     , lambdaContextAndTreeToTree = Implemented $ \_ tree -> [TextBlock "__"] <> tree <> [TextBlock "__"]
                     , lambdaContextAndTreeToText = Unimplemented
                     , lambdaContextAndTreeToString = Unimplemented
                     , lambdaTreeToTextM = Implemented $ \tree -> do
                         (_, res) <- catchSubstitute $ substituteAST tree
-                        return $ "__" <> res <> "__"
+                        pure $ "__" <> res <> "__"
                     , lambdaTextToText = Implemented $ \t -> "__" <> t <> "__"
                     }
                 ]
@@ -398,11 +398,11 @@ lambdaSpecs = flip map allLambdaImplementations $ \(key, label) ->
                 -- "lambda": (_) => false
                 [ "static" ~> T.pack "static"
                 , "lambda" ~> LambdaImplementations
-                    { lambdaTreeToTreeM = Implemented $ \_ -> return mempty
+                    { lambdaTreeToTreeM = Implemented $ \_ -> pure mempty
                     , lambdaContextAndTreeToTree = Implemented $ \_ _ -> mempty
                     , lambdaContextAndTreeToText = Implemented $ \_ _ -> mempty
                     , lambdaContextAndTreeToString = Implemented $ \_ _ -> mempty
-                    , lambdaTreeToTextM = Implemented $ \_ -> return mempty
+                    , lambdaTreeToTextM = Implemented $ \_ -> pure mempty
                     , lambdaTextToText = Implemented $ const mempty
                     }
                 ]
