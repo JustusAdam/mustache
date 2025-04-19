@@ -67,8 +67,10 @@ data MustacheState = MustacheState
   }
 
 
+data SectionStart = Normal | Existing | Inverted
+
 data ParseTagRes
-  = SectionBegin Bool DataIdentifier
+  = SectionBegin SectionStart DataIdentifier
   | SectionEnd DataIdentifier
   | Tag (Node Text)
   | HandledTag
@@ -92,6 +94,11 @@ partialBegin = '>'
 -- | @^@
 invertedSectionBegin :: Char
 invertedSectionBegin = '^'
+
+
+-- | @^@
+existingSectionBegin :: Char
+existingSectionBegin = '?'
 
 
 -- | @{@ and @}@
@@ -250,16 +257,16 @@ parseLine = do
 
 
 continueFromTag :: ParseTagRes -> Parser STree
-continueFromTag (SectionBegin inverted name) = do
+continueFromTag (SectionBegin start name) = do
   textNodes <- flushText
   state@(MustacheState
     { currentSectionName = previousSection }) <- getState
   putState $ state { currentSectionName = pure name }
   innerSectionContent <- parseText
-  let sectionTag =
-        if inverted
-          then InvertedSection
-          else Section
+  let sectionTag = case start of
+                     Normal -> Section
+                     Inverted -> InvertedSection
+                     Existing -> ExistingSection
   modifyState $ \s -> s { currentSectionName = previousSection }
   outerSectionContent <- parseText
   pure (textNodes <> [sectionTag name innerSectionContent] <> outerSectionContent)
@@ -290,7 +297,7 @@ switchOnTag = do
   (MustacheState { sDelimiters = ( _, end )}) <- getState
 
   choice
-    [ SectionBegin False <$> (try (char sectionBegin) >> genParseTagEnd mempty)
+    [ SectionBegin Normal <$> (try (char sectionBegin) >> genParseTagEnd mempty)
     , SectionEnd
         <$> (try (char sectionEnd) >> genParseTagEnd mempty)
     , Tag . Variable False
@@ -304,7 +311,12 @@ switchOnTag = do
             )
     , pure HandledTag
         << (try (char delimiterChange) >> parseDelimChange)
-    , SectionBegin True
+    , SectionBegin Existing
+        <$> (try (char existingSectionBegin) >> genParseTagEnd mempty >>= \case
+              n@(NamedData _) -> return n
+              _ -> parserFail "Existing Sections can not be implicit."
+            )
+    , SectionBegin Inverted
         <$> (try (char invertedSectionBegin) >> genParseTagEnd mempty >>= \case
               n@(NamedData _) -> pure n
               _ -> parserFail "Inverted Sections can not be implicit."

@@ -166,6 +166,18 @@ substituteNode (Section (NamedData secName) secSTree) =
       shiftContext newContext $ substituteAST secSTree
     Nothing -> tellError $ SectionTargetNotFound secName
 
+-- substituting an existing section (exact invert of the inverted section)
+substituteNode (ExistingSection  Implicit _) = tellError InvertedImplicitSection
+substituteNode (ExistingSection (NamedData secName) invSecSTree) =
+  search secName >>= \case
+    Just (Bool False) -> return ()
+    Just (Array a)    | V.null a -> return ()
+    Just Null         -> return ()
+    Nothing           -> return ()
+    _                 -> contents
+  where
+    contents = mapM_ substituteNode invSecSTree
+
 -- substituting an inverted section
 substituteNode (InvertedSection  Implicit _) = tellError InvertedImplicitSection
 substituteNode (InvertedSection (NamedData secName) invSecSTree) =

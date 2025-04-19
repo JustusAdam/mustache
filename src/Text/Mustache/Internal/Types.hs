@@ -54,7 +54,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
 import           Data.Word ( Word8, Word16, Word32, Word64 )
-import           Language.Haskell.TH.Lift (deriveLift)
+import           Language.Haskell.TH.Lift ( deriveLift )
 #if !MIN_VERSION_unordered_containers(0,2,17) || !MIN_VERSION_text(1,2,4)
 import           Language.Haskell.TH.Syntax ( Lift (..) )
 #endif
@@ -146,6 +146,7 @@ type ASTree α = [Node α]
 data Node α
   = TextBlock α
   | Section DataIdentifier (ASTree α)
+  | ExistingSection DataIdentifier (ASTree α)
   | InvertedSection DataIdentifier (ASTree α)
   | Variable Bool DataIdentifier
   | Partial (Maybe α) FilePath

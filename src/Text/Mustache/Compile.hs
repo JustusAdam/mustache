@@ -131,6 +131,7 @@ getPartials = (getPartials' =<<)
 getPartials' :: Node Text -> [FilePath]
 getPartials' (Partial _ p) = pure p
 getPartials' (Section _ n) = getPartials n
+getPartials' (ExistingSection _ n) = getPartials n
 getPartials' (InvertedSection _ n) = getPartials n
 getPartials' _                     = mempty
 
