@@ -1,10 +1,18 @@
 # Mustache library changelog
 
+## UNRELEASED
+
+- `haskell-mustache` now outputs error messages to the standard error channel,
+  rather than standard output.
+- `haskell-mustache` now exits with failure after an error, rather than with
+  success.
+
 ## v2.4.2
 
 - Also treat Null as falsey in inverted sections
 
 ## v2.4.1
+
 - Compatibility with `containers >= 0.2.17`
 
 ## v2.4.0
