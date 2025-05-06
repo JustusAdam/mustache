@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           mustache
-version:        2.4.2
+version:        2.4.3
 synopsis:       A mustache template parser library.
 description:    Allows parsing and rendering template files with mustache markup. See the
                 mustache <http://mustache.github.io/mustache.5.html language reference>.

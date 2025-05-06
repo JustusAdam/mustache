@@ -1,10 +1,15 @@
 # Mustache library changelog
 
+## v2.4.3
+
+- Adds compatibility with `text >= 2.1.2`.
+
 ## v2.4.2
 
 - Also treat Null as falsey in inverted sections
 
 ## v2.4.1
+
 - Compatibility with `containers >= 0.2.17`
 
 ## v2.4.0
@@ -22,7 +27,8 @@
 
 ## v2.2.3
 
-- Quick fix to prevent catchSubstitute from reporting substitutions to the renderer.
+- Quick fix to prevent catchSubstitute from reporting substitutions to the
+  renderer.
 
 ## v2.2.2
 
@@ -47,20 +53,25 @@
 
 ## v2.1.2
 
-- Fixed template cache again, as the spec requires access to the previous cache in partials as well
+- Fixed template cache again, as the spec requires access to the previous cache
+  in partials as well
 
 ## v2.1.1
 
-- Fixed an error where the substitution of partials would not use the template cache of the new partial
+- Fixed an error where the substitution of partials would not use the template
+  cache of the new partial
 
 ## v2.1
 
-- Added API preserving checked substitution with 'checkedSubstitute' and 'checkedSubstituteValue'
-- Better and more ToMustache instances. No longer are all sequences of characters serialised as strings
+- Added API preserving checked substitution with 'checkedSubstitute' and
+  'checkedSubstituteValue'
+- Better and more ToMustache instances. No longer are all sequences of
+  characters serialised as strings
 
 ## v2.0
 
-- Added QuasiQuotes and template Haskell functions for compile time template embedding.
+- Added QuasiQuotes and template Haskell functions for compile time template
+  embedding.
 
 ## v1.0
 
@@ -95,7 +106,7 @@
 
 ## v0.3.0.1rc-2
 
-Dropped GHC 7.8 support in favor of efficient and easy data conversion.
+- Dropped GHC 7.8 support in favor of efficient and easy data conversion.
 
 ## v0.3.0.0rc-1
 
