@@ -1,5 +1,10 @@
 # Mustache library changelog
 
+## v2.4.3.1
+
+- Renormalize line endings in test/unit/examples for `test-suite unit-tests`
+  stanza to use LF convention.
+
 ## v2.4.3
 
 - Adds compatibility with `text >= 2.1.2`.
