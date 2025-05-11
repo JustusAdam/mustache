@@ -2,8 +2,8 @@
 
 ## v2.4.3.1
 
-- Renormalize line endings in test/unit/examples for `test-suite unit-tests`
-  stanza to use LF convention.
+- Renormalize the line endings in `test/unit/examples` (for the
+  `test-suite unit-tests` stanza) to use the LF convention.
 
 ## v2.4.3
 
