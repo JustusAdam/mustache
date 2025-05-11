@@ -1,1 +1,7 @@
 /*.cabal linguist-generated=true
+
+# Ensure checked-out example files for unit tests follow the LF convention for
+# line ends
+test/unit/examples/partials/test-partial.txt.mustache text eol=lf
+test/unit/examples/test-template-partials.txt.mustache text eol=lf
+test/unit/examples/test-template.txt.mustache text eol=lf
